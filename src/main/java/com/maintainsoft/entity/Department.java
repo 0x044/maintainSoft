@@ -18,5 +18,6 @@ public class Department {
     @Column(nullable = false, unique = true)
     private String deptName;
 
-    private String pointOfContact;
+    private String pocName;
+    private String pocNumber;
 }

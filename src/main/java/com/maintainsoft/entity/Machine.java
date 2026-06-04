@@ -30,6 +30,7 @@ public class Machine {
     @CreationTimestamp
     private LocalDateTime startedOn;
 
+    @Enumerated(EnumType.STRING)
     private OperationCondition operationCondition;
 
 }
