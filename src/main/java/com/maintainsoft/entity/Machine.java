@@ -15,13 +15,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
+@Table(name = "machines")
 public class Machine {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(name = "machine name")
+    @Column(name = "machine_name")
     private String name;
 
     @ManyToOne

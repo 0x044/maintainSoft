@@ -6,11 +6,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
+@Table(name = "Spares")
 public class Spare {
 
     @Id
@@ -19,6 +22,12 @@ public class Spare {
 
     @Column(unique = true)
     private String partNumber;
+
+    private String name;
+
+    private double cost;
+
+    private LocalDate lastPurchaseDate;
 
     @Column
     private int stock;
