@@ -1,5 +1,5 @@
 package com.maintainsoft.enums;
 
 public enum Role {
-    MANAGER, SUPERVISOR
+    MANAGER, SUPERVISOR, TECHNICIAN
 }
