@@ -18,7 +18,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/login", "/VAADIN/**", "/vaadinservlets/*")
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/login", "/VAADIN/**", "/vaadinServlets/*")
                         .permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/dashboard"))
