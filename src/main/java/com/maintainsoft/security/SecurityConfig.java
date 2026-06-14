@@ -1,5 +1,7 @@
 package com.maintainsoft.security;
 
+import com.maintainsoft.ui.views.LoginView;
+import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,16 +19,10 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        http
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/login", "/VAADIN/**", "/vaadinServlets/*")
-                        .permitAll()
-                        .anyRequest().authenticated())
-                .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/dashboard"))
-                .logout(logout  -> logout
-                        .logoutSuccessUrl("/login")
-                );
-        return http.build();
+        http.with(VaadinSecurityConfigurer.vaadin(), configurer -> configurer.enableCsrfConfiguration(true)
+                .enableNavigationAccessControl(true).loginView(LoginView.class));
 
+        return http.build();
     }
 
     @Bean
