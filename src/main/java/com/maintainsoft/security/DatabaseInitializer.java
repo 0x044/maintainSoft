@@ -28,10 +28,10 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Transactional
     @NullMarked
     public void run(String... args) throws Exception {
-        log.info("--- Current Users in Database ---");
-        userRepository.findAll().forEach(u -> log.info("ID: {}, Email: {}, Name: {}, Role: {}", u.getId(), u.getEmail(),
-                u.getName(), u.getRole()));
-        log.info("---------------------------------");
+//        log.info("--- Current Users in Database ---");
+//        userRepository.findAll().forEach(u -> log.info("ID: {}, Email: {}, Name: {}, Role: {}", u.getId(), u.getEmail(),
+//                u.getName(), u.getRole()));
+//        log.info("---------------------------------");
 
         // Sync sequence in postgresql to prevent PK violation
         try {

@@ -9,11 +9,7 @@ import lombok.*;
 @RequiredArgsConstructor
 @Entity
 @Table(name = "departments")
-public class Department {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Department extends BaseEntity{
 
     @Column(nullable = false, unique = true)
     private String deptName;
