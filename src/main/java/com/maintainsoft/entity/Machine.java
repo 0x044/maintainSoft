@@ -16,22 +16,13 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Table(name = "machines")
-public class Machine {
+public class Machine extends BaseEntity{
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
-
-    @Column(name = "machine_name")
     private String name;
 
     @ManyToOne
     private Department department;
 
-    @CreationTimestamp
-    private LocalDateTime startedOn;
-
     @Enumerated(EnumType.STRING)
     private OperationCondition operationCondition;
-
 }

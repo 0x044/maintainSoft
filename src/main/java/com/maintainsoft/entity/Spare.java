@@ -5,7 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.LastModifiedDate;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -14,21 +17,19 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Table(name = "Spares")
-public class Spare {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+public class Spare extends BaseEntity{
 
     @Column(unique = true)
     private String partNumber;
 
     private String name;
 
-    private double cost;
+    @Column(precision = 19, scale = 4)
+    private BigDecimal cost;
 
-    private LocalDate lastPurchaseDate;
+    @LastModifiedDate
+    private Instant lastPurchaseDate;
 
-    @Column
+    @Column(nullable = false)
     private int stock;
 }
