@@ -1,14 +1,16 @@
 package com.maintainsoft.entity;
 
 import com.maintainsoft.enums.OperationCondition;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @AllArgsConstructor
@@ -16,13 +18,13 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Table(name = "machines")
-public class Machine extends BaseEntity{
+public class Machine extends BaseEntity {
 
-    private String name;
+  private String name;
 
-    @ManyToOne
-    private Department department;
+  @ManyToOne
+  private Department department;
 
-    @Enumerated(EnumType.STRING)
-    private OperationCondition operationCondition;
+  @Enumerated(EnumType.STRING)
+  private OperationCondition operationCondition;
 }
