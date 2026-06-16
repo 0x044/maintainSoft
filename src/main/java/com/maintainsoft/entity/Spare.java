@@ -1,15 +1,17 @@
 package com.maintainsoft.entity;
 
-import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.Instant;
+
+import org.springframework.data.annotation.LastModifiedDate;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.annotation.LastModifiedDate;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDate;
 
 @Entity
 @AllArgsConstructor
@@ -17,19 +19,19 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Table(name = "Spares")
-public class Spare extends BaseEntity{
+public class Spare extends BaseEntity {
 
-    @Column(unique = true)
-    private String partNumber;
+  @Column(unique = true)
+  private String partNumber;
 
-    private String name;
+  private String name;
 
-    @Column(precision = 19, scale = 4)
-    private BigDecimal cost;
+  @Column(precision = 19, scale = 4)
+  private BigDecimal cost;
 
-    @LastModifiedDate
-    private Instant lastPurchaseDate;
+  @LastModifiedDate
+  private Instant lastPurchaseDate;
 
-    @Column(nullable = false)
-    private int stock;
+  @Column(nullable = false)
+  private int stock;
 }
