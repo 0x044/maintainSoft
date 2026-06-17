@@ -22,7 +22,10 @@ public class MaintainsoftApplication {
 
 	@Bean
 	AuditorAware<String> auditorProvider(){
-		return ()-> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication()).map(Authentication::getName);
+		return () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
+				.filter(Authentication::isAuthenticated)
+				.map(Authentication::getName)
+				.or(() -> Optional.of("system"));
 	}
 
 }
