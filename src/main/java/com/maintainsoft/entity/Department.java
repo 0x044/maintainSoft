@@ -6,8 +6,8 @@ import lombok.*;
 @Getter
 @Setter
 @ToString
-@RequiredArgsConstructor
 @Entity
+@RequiredArgsConstructor
 @Table(name = "departments")
 public class Department extends BaseEntity{
 
@@ -15,5 +15,6 @@ public class Department extends BaseEntity{
     private String deptName;
 
     private String pocName;
+
     private String pocNumber;
 }
