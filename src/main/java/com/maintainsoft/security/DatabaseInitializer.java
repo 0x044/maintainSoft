@@ -29,7 +29,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             Department department = new Department();
             department.setDeptName("Administration");
             department.setPocName("Balasubramanian");
-            department.setPocNumber("9842205227");
+            department.setPocNumber(9842205227L);
             departmentRepository.save(department);
 
             User user = new User();

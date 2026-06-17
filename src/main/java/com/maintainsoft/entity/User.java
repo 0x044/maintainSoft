@@ -24,7 +24,7 @@ public class User extends BaseEntity{
     private String email;
 
     @Column(name = "role")
-    @Enumerated(EnumType.ORDINAL)
+    @Enumerated(EnumType.STRING)
     private Role role;
 
     @Column(nullable = false, unique = true)

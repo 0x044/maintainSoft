@@ -16,5 +16,5 @@ public class Department extends BaseEntity{
 
     private String pocName;
 
-    private String pocNumber;
+    private Long pocNumber;
 }
