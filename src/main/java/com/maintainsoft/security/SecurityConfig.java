@@ -39,6 +39,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
         http
                 .authorizeHttpRequests((authorize)-> authorize
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .anyRequest().authenticated()
                 ).csrf(csrf -> csrf.ignoringRequestMatchers("/token"))
                 .httpBasic(Customizer.withDefaults())
