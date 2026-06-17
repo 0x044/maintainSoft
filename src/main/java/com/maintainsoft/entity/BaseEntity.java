@@ -1,6 +1,7 @@
 package com.maintainsoft.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -14,7 +15,7 @@ import java.util.UUID;
 public class BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID) //TODO implement custom time aware uuidv7 generator
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7) // Using hibernate's built in UUIDv7
     private UUID id;
 
     @CreatedDate
