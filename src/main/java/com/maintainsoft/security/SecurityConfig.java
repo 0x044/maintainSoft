@@ -67,7 +67,6 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", corsConfiguration);
         return source;
     }
-
     @Bean
     JwtEncoder jwtEncoder(){
         JWK jwk = new RSAKey.Builder(this.key).privateKey(this.privateKey).build();
