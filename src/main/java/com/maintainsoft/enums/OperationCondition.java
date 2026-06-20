@@ -1,5 +1,5 @@
 package com.maintainsoft.enums;
 
 public enum OperationCondition {
-    GOOD, FAIR, POOR, CRITICAL
+    OPERATIONAL, UNDER_MAINTENANCE, DECOMMISSIONED
 }
