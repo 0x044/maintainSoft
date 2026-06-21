@@ -2,6 +2,8 @@ package com.maintainsoft.entity;
 
 import com.maintainsoft.enums.RepairStatus;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "repair_updates",
@@ -9,6 +11,8 @@ import jakarta.persistence.*;
                 @Index(name = "idx_repair_update_repair", columnList = "repair_id")
         }
 )
+@Getter
+@Setter
 public class RepairUpdate extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "repair_id", nullable = false)
