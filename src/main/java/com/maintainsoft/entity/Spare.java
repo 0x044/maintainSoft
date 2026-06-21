@@ -1,6 +1,8 @@
 package com.maintainsoft.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -18,6 +20,8 @@ import java.time.Instant;
 )
 @SQLDelete(sql = "UPDATE spares SET deleted = true where id = ? and version = ?")
 @SQLRestriction("deleted = false")
+@Getter
+@Setter
 public class Spare extends BaseEntity {
 
     @Column(unique = true)

@@ -4,6 +4,8 @@ import com.maintainsoft.enums.RepairPriority;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.enums.RepairType;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -18,6 +20,8 @@ import java.util.List;
                 @Index(name = "idx_repair_created", columnList = "created_at")
         }
 )
+@Getter
+@Setter
 public class Repair extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "machine_id", nullable = false)
