@@ -1,16 +1,13 @@
 package com.maintainsoft.controller;
 
+import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
-import com.maintainsoft.entity.Department;
 import com.maintainsoft.service.DepartmentService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @AllArgsConstructor
@@ -21,15 +18,13 @@ public class DepartmentController {
 
     @GetMapping("departments")
     ResponseEntity<List<DepartmentResponse>> listDepartments() {
-        List<DepartmentResponse> list = new ArrayList<>();
+        return ResponseEntity.status(HttpStatus.OK).body(departmentService.listDepartments());
+    }
 
-        for (Department department : departmentService.listDepartments()){
-            list.add(
-                    new DepartmentResponse(department.getId(), department.getDeptName(), department.getPocName(), department.getPocNumber())
-            );
-        }
-
-        return ResponseEntity.status(HttpStatus.OK).body(list);
+    @PostMapping("/department")
+    ResponseEntity<DepartmentResponse> createDepartment(@RequestBody DepartmentRequest request){
+        DepartmentResponse response = departmentService.createDepartment(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
 }
