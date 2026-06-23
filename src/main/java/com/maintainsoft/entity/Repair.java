@@ -15,8 +15,8 @@ import java.util.List;
 @Table(name = "repairs",
         indexes = {
                 @Index(name = "idx_machine_repair", columnList = "machine_id"),
-                @Index(name = "idx_repair_status", columnList = "status"),
-                @Index(name = "idx_repair_priority", columnList = "priority"),
+                @Index(name = "idx_repair_status", columnList = "repair_status"),
+                @Index(name = "idx_repair_priority", columnList = "repair_priority"),
                 @Index(name = "idx_repair_created", columnList = "created_at")
         }
 )

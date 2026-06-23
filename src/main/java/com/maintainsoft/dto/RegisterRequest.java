@@ -1,7 +1,5 @@
 package com.maintainsoft.dto;
 
-import com.maintainsoft.entity.Department;
-
 import java.util.UUID;
 
 public record RegisterRequest(

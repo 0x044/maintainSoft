@@ -4,44 +4,33 @@ import com.maintainsoft.dto.AuthResponse;
 import com.maintainsoft.dto.LoginRequest;
 import com.maintainsoft.dto.RefreshRequest;
 import com.maintainsoft.dto.RegisterRequest;
-import com.maintainsoft.exception.DuplicateEmailException;
-import com.maintainsoft.security.UserDetailServiceImpl;
 import com.maintainsoft.service.AuthService;
-import com.maintainsoft.service.JwtService;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AuthController {
-    public AuthService authService;
-    public JwtService jwtService;
-    private UserDetailServiceImpl userDetailService;
-
-    @GetMapping("/token")
-    ResponseEntity<String> token(@RequestBody LoginRequest loginRequest) {
-        UserDetails userDetails = userDetailService.loadUserByUsername(loginRequest.email());
-        String token = jwtService.generateAccessToken(userDetails);
-
-        return ResponseEntity.status(HttpStatus.OK).body(token);
-    }
+    private final AuthService authService;
 
     @PostMapping("/register")
-    ResponseEntity<AuthResponse> register(RegisterRequest registerRequest) {
-
+    ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
+        AuthResponse response = authService.register(registerRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
-    AuthResponse login(LoginRequest loginRequest) {
-
+    ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+        AuthResponse response = authService.login(loginRequest);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh")
-    AuthResponse refresh(RefreshRequest refreshRequest) {
-
+    ResponseEntity<AuthResponse> refresh(@RequestBody RefreshRequest refreshRequest) {
+        AuthResponse response = authService.refresh(refreshRequest);
+        return ResponseEntity.ok(response);
     }
 }
