@@ -24,7 +24,7 @@ public class JwtService {
         Instant now = Instant.now();
 
         JwtClaimsSet claimsSet = JwtClaimsSet.builder()
-                .issuer("self")
+                .issuer("https://msi.leo-blenny.ts.net")
                 .issuedAt(now)
                 .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                 .subject(userDetails.getUsername())
@@ -39,7 +39,7 @@ public class JwtService {
         Instant now = Instant.now();
 
         JwtClaimsSet claimsSet = JwtClaimsSet.builder()
-                .issuer("self")
+                .issuer("https://msi.leo-blenny.ts.net")
                 .issuedAt(now)
                 .expiresAt(now.plus(7, ChronoUnit.DAYS))
                 .subject(userDetails.getUsername())
