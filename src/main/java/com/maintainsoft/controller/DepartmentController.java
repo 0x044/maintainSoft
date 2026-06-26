@@ -1,5 +1,6 @@
 package com.maintainsoft.controller;
 
+import com.maintainsoft.dto.DeleteResponse;
 import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
 import com.maintainsoft.service.DepartmentService;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @AllArgsConstructor
 @RestController
@@ -16,7 +18,7 @@ import java.util.List;
 public class DepartmentController {
     private final DepartmentService departmentService;
 
-    @GetMapping("departments")
+    @GetMapping("/departments")
     ResponseEntity<List<DepartmentResponse>> listDepartments() {
         return ResponseEntity.status(HttpStatus.OK).body(departmentService.listDepartments());
     }
@@ -25,6 +27,12 @@ public class DepartmentController {
     ResponseEntity<DepartmentResponse> createDepartment(@RequestBody DepartmentRequest request){
         DepartmentResponse response = departmentService.createDepartment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping("/department")
+    ResponseEntity<DeleteResponse> deleteDepartmentById(@RequestParam UUID departmentId){
+        DeleteResponse response = departmentService.deleteDepartment(departmentId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
 }
