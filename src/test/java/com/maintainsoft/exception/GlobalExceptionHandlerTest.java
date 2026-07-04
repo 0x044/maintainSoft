@@ -143,6 +143,28 @@ class GlobalExceptionHandlerTest {
     }
 
     @Nested
+    @DisplayName("handleNoResourceFound")
+    class HandleNoResourceFoundTests {
+
+        @Test
+        @DisplayName("should return NOT_FOUND (404) with exception message")
+        void returnsNotFoundWithExceptionMessage() {
+            org.springframework.web.servlet.resource.NoResourceFoundException ex =
+                    org.mockito.Mockito.mock(org.springframework.web.servlet.resource.NoResourceFoundException.class);
+            org.mockito.Mockito.when(ex.getMessage()).thenReturn("Resource not found");
+
+            ResponseEntity<ErrorResponse> response = handler.handleNoResourceFound(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().status()).isEqualTo(404);
+            assertThat(response.getBody().error()).isEqualTo("Not Found");
+            assertThat(response.getBody().message()).isEqualTo("Resource not found");
+            assertThat(response.getBody().timeStamp()).isNotNull();
+        }
+    }
+
+    @Nested
     @DisplayName("handleAllErrors")
     class HandleAllErrorsTests {
 

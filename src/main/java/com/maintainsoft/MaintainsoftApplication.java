@@ -3,6 +3,7 @@ package com.maintainsoft;
 import com.ulisesbocchio.jasyptspringboot.annotation.EnableEncryptableProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
@@ -17,7 +18,9 @@ import java.util.Optional;
 public class MaintainsoftApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(MaintainsoftApplication.class, args);
+		SpringApplication app = new SpringApplication(MaintainsoftApplication.class);
+		app.setApplicationStartup(new BufferingApplicationStartup(2048));
+		app.run(args);
 	}
 
 	@Bean
