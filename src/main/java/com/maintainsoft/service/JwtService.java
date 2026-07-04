@@ -55,7 +55,7 @@ public class JwtService {
             String type = jwt.getClaimAsString("type");
 
             if(!"refresh".equals(type)){
-                throw new InvalidTokenException("Invalid username or password");
+                throw new InvalidTokenException("Invalid Refresh Token");
             }
 
             return jwt;

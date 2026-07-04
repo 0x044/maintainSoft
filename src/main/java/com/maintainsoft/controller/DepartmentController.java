@@ -30,7 +30,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/department")
-    ResponseEntity<DeleteResponse> deleteDepartmentById(@RequestParam UUID departmentId){
+    ResponseEntity<DeleteResponse> deleteDepartmentById(@RequestParam(name = "id") UUID departmentId){
         DeleteResponse response = departmentService.deleteDepartment(departmentId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }

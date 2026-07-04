@@ -25,7 +25,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     @Override
     public void run(String @NonNull ... args) {
         if (userRepository.count() == 0) {
-            log.info("Initializing Database...........");
+            log.info("Initializing Database");
 
             Department department = new Department();
             department.setDeptName("Administration");
@@ -41,7 +41,6 @@ public class DatabaseInitializer implements CommandLineRunner {
             user.setRole(Role.MANAGER);
             user.setPassword(passwordEncoder.encode("password"));
             userRepository.save(user);
-
             log.info("DB Populated");
         }
     }
