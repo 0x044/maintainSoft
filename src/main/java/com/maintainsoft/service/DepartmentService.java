@@ -3,6 +3,7 @@ package com.maintainsoft.service;
 import com.maintainsoft.dto.DeleteResponse;
 import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
+import com.maintainsoft.dto.UpdateResponse;
 import com.maintainsoft.entity.Department;
 import com.maintainsoft.repository.DepartmentRepository;
 import lombok.AllArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -45,5 +47,17 @@ public class DepartmentService {
         }else{
             return new DeleteResponse("Department not found", Instant.now());
         }
+    }
+
+    public UpdateResponse updateDepartment(DepartmentRequest departmentID){
+        Optional<Department> dept = departmentRepository.findByDeptName(departmentID.deptName());
+
+        dept.ifPresent(d -> {
+            d.setPocName(departmentID.pocName());
+            d.setPocNumber(departmentID.pocNumber());
+            departmentRepository.save(d);
+        });
+
+        return dept.map(department -> new UpdateResponse("Updated successfully", Instant.now(), department.getId())).orElseGet(() -> new UpdateResponse("Unable to find department", Instant.now(), null));
     }
 }

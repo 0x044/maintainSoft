@@ -3,6 +3,7 @@ package com.maintainsoft.controller;
 import com.maintainsoft.dto.DeleteResponse;
 import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
+import com.maintainsoft.dto.UpdateResponse;
 import com.maintainsoft.service.DepartmentService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,4 +36,10 @@ public class DepartmentController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    @PatchMapping("/department")
+    ResponseEntity<UpdateResponse> updateDepartment(@RequestBody DepartmentRequest departmentRequest){
+        UpdateResponse updateResponse = departmentService.updateDepartment(departmentRequest);
+
+        return ResponseEntity.status(HttpStatus.OK).body(updateResponse);
+    }
 }
