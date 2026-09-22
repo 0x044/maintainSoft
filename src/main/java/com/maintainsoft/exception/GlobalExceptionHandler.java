@@ -49,4 +49,11 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(500, "Error", "Internal Server Error", Instant.now())
         );
     }
+
+    @ExceptionHandler(DuplicateDepartmentException.class)
+    ResponseEntity<ErrorResponse> handleDuplicateDepartment(DuplicateDepartmentException e){
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Duplicate", e.getMessage(), Instant.now())
+        );
+    }
 }

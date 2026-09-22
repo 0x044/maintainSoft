@@ -5,6 +5,7 @@ import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
 import com.maintainsoft.dto.UpdateResponse;
 import com.maintainsoft.entity.Department;
+import com.maintainsoft.exception.DuplicateDepartmentException;
 import com.maintainsoft.repository.DepartmentRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,11 @@ public class DepartmentService {
         department.setDeptName(request.deptName());
         department.setPocName(request.pocName());
         department.setPocNumber(request.pocNumber());
-        departmentRepository.save(department);
+        if(departmentRepository.findByDeptName(request.deptName()).isEmpty()){
+            departmentRepository.save(department);
+        }else if(departmentRepository.findByDeptName(request.deptName()).isPresent()){
+            throw new DuplicateDepartmentException("Department already exists");
+        }
 
         return new DepartmentResponse(department.getId(), department.getDeptName(), department.getPocName(), department.getPocNumber());
     }
