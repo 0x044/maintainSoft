@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger/**", "/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users").hasRole("MANAGER")
                         .anyRequest().authenticated()
                 ).csrf(CsrfConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt((jwt) -> jwt
