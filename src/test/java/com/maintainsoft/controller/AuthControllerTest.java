@@ -3,7 +3,6 @@ package com.maintainsoft.controller;
 import com.maintainsoft.dto.AuthResponse;
 import com.maintainsoft.dto.LoginRequest;
 import com.maintainsoft.dto.RefreshRequest;
-import com.maintainsoft.dto.RegisterRequest;
 import com.maintainsoft.service.AuthService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -14,11 +13,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-import java.util.UUID;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthController Unit Tests")
@@ -39,50 +40,15 @@ class AuthControllerTest {
         );
     }
 
-    @Nested
-    @DisplayName("POST /api/v1/auth/register")
-    class RegisterTests {
+    @Test
+    @DisplayName("Should not expose the public registration route")
+    void registerEndpointIsNotExposed() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(authController).build();
 
-        @Test
-        @DisplayName("Should return CREATED (201) status with auth response")
-        void register_returnsCreatedStatus_withAuthResponse() {
-            // Arrange
-            UUID departmentId = UUID.randomUUID();
-            RegisterRequest request = new RegisterRequest(
-                    "John Doe", "john@example.com", "password123", "9876543210", departmentId
-            );
-            AuthResponse expectedResponse = buildAuthResponse();
-            when(authService.register(request)).thenReturn(expectedResponse);
+        mockMvc.perform(post("/api/v1/auth/register"))
+                .andExpect(status().isNotFound());
 
-            // Act
-            ResponseEntity<AuthResponse> result = authController.register(request);
-
-            // Assert
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-            assertThat(result.getBody()).isNotNull();
-            assertThat(result.getBody().accessToken()).isEqualTo("access-token-123");
-            assertThat(result.getBody().refreshToken()).isEqualTo("refresh-token-456");
-            assertThat(result.getBody().email()).isEqualTo("user@example.com");
-            assertThat(result.getBody().role()).isEqualTo("MANAGER");
-            verify(authService, times(1)).register(request);
-        }
-
-        @Test
-        @DisplayName("Should delegate to AuthService exactly once")
-        void register_delegatesToAuthService() {
-            // Arrange
-            RegisterRequest request = new RegisterRequest(
-                    "Jane", "jane@example.com", "pass", "1234567890", UUID.randomUUID()
-            );
-            when(authService.register(request)).thenReturn(buildAuthResponse());
-
-            // Act
-            authController.register(request);
-
-            // Assert
-            verify(authService, times(1)).register(request);
-            verifyNoMoreInteractions(authService);
-        }
+        verifyNoInteractions(authService);
     }
 
     @Nested
