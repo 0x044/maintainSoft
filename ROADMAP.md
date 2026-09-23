@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `493f905` (`master` / `origin/master`), verified 2026-09-23.
+> **Source baseline:** commit `76b5c31`, verified 2026-09-23.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -60,12 +60,12 @@ The following checks were run with Java 26:
 
 ```text
 mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
-Result: BUILD SUCCESS — 202 tests passed
+Result: BUILD SUCCESS — 220 tests passed
 ```
 
-A test-skipping package build also succeeds. The 202 passing tests are mostly
-Mockito unit tests, accessor/record tests, and direct controller/exception-handler
-invocations.
+A test-skipping package build also succeeds. The 220 passing tests are mostly
+Mockito unit tests, accessor/record tests, direct controller/exception-handler
+invocations, and focused security/validation tests.
 
 The remaining test is:
 
@@ -195,24 +195,27 @@ question below explicitly says otherwise.
 
 | Endpoint | Current behavior | Status |
 |---|---|---|
-| `POST /api/v1/auth/register` | Public; creates a `SUPERVISOR`; returns tokens | **Unsafe / remove** |
-| `POST /api/v1/auth/login` | Database-backed BCrypt authentication; returns tokens | Implemented, needs security tests |
-| `POST /api/v1/auth/refresh` | Decodes a refresh JWT and issues a new pair | Incomplete and replayable |
+| `POST /api/v1/auth/register` | No longer mapped; public registration was removed | **Removed** |
+| `POST /api/v1/auth/login` | Database-backed BCrypt authentication; returns tokens | Implemented |
+| `POST /api/v1/auth/refresh` | Refresh-only decoder issues a new pair | Incomplete: no rotation/revocation |
+| `POST /api/v1/users` | Manager-only; creates a `SUPERVISOR` account | Implemented, initial slice |
 | `GET /api/v1/health` | Authenticated principal echo, not a real health check | Implemented |
 | `GET /api/v1/departments` | Lists active departments | Implemented |
-| `POST /api/v1/department` | Creates a department after a check-then-insert | Race-prone |
-| `PATCH /api/v1/department` | Updates by department name; cannot rename | Contract needs redesign |
-| `DELETE /api/v1/department?id=` | Soft-deletes or returns an error message with HTTP 200 | Contract needs redesign |
+| `POST /api/v1/departments` | Creates a department with DB-backed duplicate handling | Implemented |
+| `PATCH /api/v1/departments/{id}` | Updates by ID and allows rename | Implemented |
+| `DELETE /api/v1/departments/{id}` | Archives a department and returns 204 | Implemented |
 
 ### Persistence model present but not wired into workflows
 
 - `Department`, `User`, `Machine`, `Technician`, `Repair`, `RepairUpdate`, `Spare`, and
   `RepairSpare` entities exist.
 - `UserRepository` and `DepartmentRepository` are used.
+- `UserManagementService` and `UserController` provide the initial manager-only
+  supervisor invitation path.
 - `MachineRepository` and `SpareRepository` are currently dormant.
 - There are no technician, machine, spare, repair, repair-update, or repair-spare
   services/controllers.
-- There is no `POST /users`, logout, password lifecycle, or refresh-token repository.
+- There is no logout, password lifecycle, or refresh-token repository.
 
 ### Configuration and schema
 
@@ -280,20 +283,20 @@ credentials published in source or history.
 
 #### P0.3 Close the public registration path
 
-**Finding:** `/api/v1/auth/**` is public and registration immediately creates a usable
-supervisor account.
+**Finding:** public registration was removed from the controller/service, and only exact
+login/refresh POST routes are public. The manager invitation endpoint now exists, but
+full HTTP 401/403 security coverage is still pending.
 
 **Tasks:**
 
-- [ ] Remove the public registration endpoint and its service flow; manager invitation
+- [x] Remove the public registration endpoint and its service flow; manager invitation
       is the confirmed account-creation path.
-- [ ] Replace wildcard `/api/v1/auth/**` matching with exact public matchers for
+- [x] Replace wildcard `/api/v1/auth/**` matching with exact public matchers for
       login and refresh; a future logout endpoint must not inherit `permitAll`.
-- [ ] Add a manager-only `POST /users` flow with server-side role validation.
-- [ ] Sequence the role converter and method/URL authorization work in P1.1 before
-      accepting the manager-only flow; the current JWT authority mapping is not yet
-      compatible with `hasRole('MANAGER')`.
-- [ ] Replace tests that currently require public supervisor registration.
+- [x] Add a manager-only `POST /users` flow with server-side role validation.
+- [x] Add the custom JWT authority converter required by the manager-only rule.
+- [x] Replace tests that previously required public supervisor registration.
+- [ ] Add isolated HTTP security tests proving 401/403 behavior for the user endpoint.
 
 **Acceptance:** unauthenticated registration is rejected; only an authorized manager
 can create users, with documented role and department rules, and 401/403 behavior is
@@ -303,31 +306,29 @@ covered by HTTP security tests.
 
 #### P1.1 Enforce an explicit role matrix
 
-**Finding:** the security chain ends at `anyRequest().authenticated()`. No method-level
-authorization exists.
+**Finding:** URL-level authorization now protects the initial manager-only user route,
+but method-level authorization is not enabled and the complete role matrix is not yet
+covered by HTTP tests.
 
-- [ ] Implement the confirmed role matrix: managers and supervisors share business
-      operations across all departments; manager-only actions cover user management and
-      custom status configuration.
-- [ ] Enable method security only after checking the current AOP auto-configuration
-      exclusion.
-- [ ] Add a custom JWT authority converter. The current token writes `ROLE_MANAGER`
-      into the OAuth `scope` claim; the default resource-server converter would normally
-      produce `SCOPE_ROLE_MANAGER`, not `ROLE_MANAGER`.
+- [x] Implement the initial confirmed role matrix for the user route: managers and
+      supervisors share business operations; manager-only actions cover user management.
+- [ ] Enable method security after checking the current AOP auto-configuration exclusion.
+- [x] Add a custom JWT authority converter so `ROLE_MANAGER` and `ROLE_SUPERVISOR`
+      claims map to Spring role authorities.
 - [ ] Add MockMvc/security tests for 401, 403, and the complete role matrix.
 
 #### P1.2 Separate access and refresh token validation
 
-**Finding:** the same decoder is used by the resource server and refresh endpoint, but
-the resource server does not require `type=access`. A valid refresh token can therefore
-authenticate a bearer request.
+**Finding:** access and refresh decoders are now separate, and both validate the configured
+issuer and expected `type` claim. Audience policy, required-claim policy, and refresh
+rotation remain open.
 
-- [ ] Add an access-token validator requiring the correct signature, issuer, token
-      type, required claims, and (if applicable) audience.
-- [ ] Use separate refresh validation rules.
+- [x] Add an access-token validator requiring the correct signature, issuer, and token
+      type.
+- [x] Use separate refresh validation rules.
 - [ ] Add a random `jti` to refresh tokens.
-- [ ] Test that access tokens cannot refresh and refresh tokens cannot access protected
-      endpoints.
+- [x] Test that access tokens cannot access protected endpoints and refresh tokens
+      cannot be accepted by the access decoder.
 
 #### P1.3 Add refresh rotation, revocation, and logout
 
@@ -344,8 +345,8 @@ authenticate a bearer request.
 - [ ] Add login/refresh and breakdown-report throttling; the current Resilience4j
       dependency is unused and is not Spring-integrated.
 - [ ] Restrict Actuator `startup`/`conditions` and Swagger/OpenAPI by environment.
-- [ ] Fix CORS methods (`PATCH` and `DELETE` are currently omitted), allowed headers,
-      and the exact development origins.
+- [x] Fix CORS methods and allowed headers for the current API; exact approved origins
+      remain unchanged.
 - [ ] Configure explicit security error responses and avoid logging credentials/tokens.
 
 ### P1 — Build, test, and migration safety
@@ -385,18 +386,18 @@ The current 203-test inventory overstates behavioral coverage. Add:
 
 ### P1 — API and domain correctness
 
-- [ ] Add the Jakarta Validation starter and constraints to request DTOs.
-- [ ] Apply `@Valid` at controller boundaries and map validation errors to a stable
-      400 response.
-- [ ] Replace the catch-all 500 behavior with specific mappings for 400, 401, 403, 404,
-      409, and optimistic-lock failures; log unexpected server errors with context.
+- [x] Add the Jakarta Validation starter and constraints to the current request DTOs.
+- [x] Apply `@Valid` at current controller boundaries and map validation errors to a
+      stable 400 response.
+- [ ] Replace the catch-all 500 behavior with specific mappings for 401, 403, 409, and
+      optimistic-lock failures; log unexpected server errors with context.
 - [ ] Decide whether to use `ProblemDetail` or retain the current `ErrorResponse`
       contract consistently.
-- [ ] Redesign Department routes to use plural resources and path IDs.
-- [ ] Make Department creation concurrency-safe by translating the database uniqueness
+- [x] Redesign Department routes to use plural resources and path IDs.
+- [x] Make Department creation concurrency-safe by translating the database uniqueness
       race to HTTP 409.
-- [ ] Allow Department rename through an explicit PATCH contract.
-- [ ] Return proper 404/409/204 semantics instead of HTTP 200 error messages.
+- [x] Allow Department rename through an explicit PATCH contract.
+- [x] Return proper 404/409/204 semantics for Department operations.
 - [ ] Remove secret-bearing DTO `toString()` output or prevent request/response DTOs
       from being logged.
 
@@ -464,6 +465,10 @@ This is the first business milestone.
   issue; an authenticated user can submit a breakdown; all writes are validated and
   authorized, master-data records are archived rather than hard-deleted, repair history
   is append-only, and the flow is covered by isolated tests.
+
+Current progress: manager user invitation, Department CRUD, request validation, JWT
+role mapping, token-purpose separation, and CORS are implemented. Machine, spare,
+repair, custom-status, and full HTTP security integration tests remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
