@@ -1,46 +1,53 @@
 package com.maintainsoft.controller;
 
-import com.maintainsoft.dto.DeleteResponse;
-import jakarta.validation.Valid;
 import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
-import com.maintainsoft.dto.UpdateResponse;
 import com.maintainsoft.service.DepartmentService;
-import lombok.AllArgsConstructor;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
 
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/v1/")
+@RequestMapping("/api/v1/departments")
 public class DepartmentController {
+
     private final DepartmentService departmentService;
 
-    @GetMapping("/departments")
+    @GetMapping
     ResponseEntity<List<DepartmentResponse>> listDepartments() {
-        return ResponseEntity.status(HttpStatus.OK).body(departmentService.listDepartments());
+        return ResponseEntity.ok(departmentService.listDepartments());
     }
 
-    @PostMapping("/department")
-    ResponseEntity<DepartmentResponse> createDepartment(@Valid @RequestBody DepartmentRequest request){
-        DepartmentResponse response = departmentService.createDepartment(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @PostMapping
+    ResponseEntity<DepartmentResponse> createDepartment(@Valid @RequestBody DepartmentRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(departmentService.createDepartment(request));
     }
 
-    @DeleteMapping("/department")
-    ResponseEntity<DeleteResponse> deleteDepartmentById(@RequestParam(name = "id") UUID departmentId){
-        DeleteResponse response = departmentService.deleteDepartment(departmentId);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+    @PatchMapping("/{id}")
+    ResponseEntity<DepartmentResponse> updateDepartment(
+            @PathVariable UUID id,
+            @Valid @RequestBody DepartmentRequest request
+    ) {
+        return ResponseEntity.ok(departmentService.updateDepartment(id, request));
     }
 
-    @PatchMapping("/department")
-    ResponseEntity<UpdateResponse> updateDepartment(@Valid @RequestBody DepartmentRequest departmentRequest){
-        UpdateResponse updateResponse = departmentService.updateDepartment(departmentRequest);
-
-        return ResponseEntity.status(HttpStatus.OK).body(updateResponse);
+    @DeleteMapping("/{id}")
+    ResponseEntity<Void> deleteDepartment(@PathVariable UUID id) {
+        departmentService.deleteDepartment(id);
+        return ResponseEntity.noContent().build();
     }
 }

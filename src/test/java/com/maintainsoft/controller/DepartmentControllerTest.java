@@ -94,7 +94,7 @@ class DepartmentControllerTest {
     }
 
     @Nested
-    @DisplayName("POST /api/v1/department")
+    @DisplayName("POST /api/v1/departments")
     class CreateDepartmentTests {
 
         @Test
@@ -150,6 +150,45 @@ class DepartmentControllerTest {
             // Assert
             verify(departmentService).createDepartment(request);
             verifyNoMoreInteractions(departmentService);
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /api/v1/departments/{id}")
+    class UpdateDepartmentTests {
+
+        @Test
+        @DisplayName("Should return OK with updated department")
+        void updateDepartment_returnsOkStatus_withResponse() {
+            UUID id = UUID.randomUUID();
+            DepartmentRequest request = new DepartmentRequest("Research", "Bob", 2222222222L);
+            DepartmentResponse response = new DepartmentResponse(
+                    id, "Research", "Bob", 2222222222L
+            );
+            when(departmentService.updateDepartment(id, request)).thenReturn(response);
+
+            ResponseEntity<DepartmentResponse> result = departmentController.updateDepartment(id, request);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result.getBody()).isEqualTo(response);
+            verify(departmentService).updateDepartment(id, request);
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE /api/v1/departments/{id}")
+    class DeleteDepartmentTests {
+
+        @Test
+        @DisplayName("Should return NO_CONTENT after deletion")
+        void deleteDepartment_returnsNoContent() {
+            UUID id = UUID.randomUUID();
+
+            ResponseEntity<Void> result = departmentController.deleteDepartment(id);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            assertThat(result.getBody()).isNull();
+            verify(departmentService).deleteDepartment(id);
         }
     }
 }

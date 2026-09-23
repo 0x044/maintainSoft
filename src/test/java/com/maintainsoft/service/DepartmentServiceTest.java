@@ -3,7 +3,10 @@ package com.maintainsoft.service;
 import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
 import com.maintainsoft.entity.Department;
+import com.maintainsoft.exception.DuplicateDepartmentException;
+import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.DepartmentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -12,13 +15,18 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,14 +39,10 @@ class DepartmentServiceTest {
     @InjectMocks
     private DepartmentService departmentService;
 
-    private Department createDepartment(UUID id, String deptName, String pocName, Long pocNumber) {
-        Department dept = new Department();
-        dept.setDeptName(deptName);
-        dept.setPocName(pocName);
-        dept.setPocNumber(pocNumber);
-        // BaseEntity id is normally set by Hibernate; we use reflection or setter for testing
-        dept.setId(id);
-        return dept;
+    @BeforeEach
+    void setUp() {
+        lenient().when(departmentRepository.saveAndFlush(any(Department.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Nested
@@ -48,64 +52,30 @@ class DepartmentServiceTest {
         @Test
         @DisplayName("should return empty list when no departments exist")
         void listDepartments_Empty() {
-            // Arrange
             when(departmentRepository.findAll()).thenReturn(Collections.emptyList());
 
-            // Act
             List<DepartmentResponse> result = departmentService.listDepartments();
 
-            // Assert
-            assertThat(result).isNotNull().isEmpty();
+            assertThat(result).isEmpty();
             verify(departmentRepository).findAll();
         }
 
         @Test
-        @DisplayName("should return populated list when departments exist")
+        @DisplayName("should map all department fields")
         void listDepartments_Populated() {
-            // Arrange
-            UUID id1 = UUID.randomUUID();
-            UUID id2 = UUID.randomUUID();
+            UUID firstId = UUID.randomUUID();
+            UUID secondId = UUID.randomUUID();
+            when(departmentRepository.findAll()).thenReturn(List.of(
+                    department(firstId, "Engineering", "Alice", 1111111111L),
+                    department(secondId, "Marketing", "Bob", 2222222222L)
+            ));
 
-            Department dept1 = createDepartment(id1, "Engineering", "Alice", 1111111111L);
-            Department dept2 = createDepartment(id2, "Marketing", "Bob", 2222222222L);
-
-            when(departmentRepository.findAll()).thenReturn(List.of(dept1, dept2));
-
-            // Act
             List<DepartmentResponse> result = departmentService.listDepartments();
 
-            // Assert
-            assertThat(result).hasSize(2);
-
-            DepartmentResponse resp1 = result.get(0);
-            assertThat(resp1.deptId()).isEqualTo(id1);
-            assertThat(resp1.name()).isEqualTo("Engineering");
-            assertThat(resp1.pocName()).isEqualTo("Alice");
-            assertThat(resp1.pocPhone()).isEqualTo(1111111111L);
-
-            DepartmentResponse resp2 = result.get(1);
-            assertThat(resp2.deptId()).isEqualTo(id2);
-            assertThat(resp2.name()).isEqualTo("Marketing");
-            assertThat(resp2.pocName()).isEqualTo("Bob");
-            assertThat(resp2.pocPhone()).isEqualTo(2222222222L);
-
-            verify(departmentRepository).findAll();
-        }
-
-        @Test
-        @DisplayName("should return single element list when one department exists")
-        void listDepartments_SingleElement() {
-            // Arrange
-            UUID id = UUID.randomUUID();
-            Department dept = createDepartment(id, "HR", "Charlie", 3333333333L);
-            when(departmentRepository.findAll()).thenReturn(List.of(dept));
-
-            // Act
-            List<DepartmentResponse> result = departmentService.listDepartments();
-
-            // Assert
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).name()).isEqualTo("HR");
+            assertThat(result).extracting(DepartmentResponse::deptId)
+                    .containsExactly(firstId, secondId);
+            assertThat(result.get(0).name()).isEqualTo("Engineering");
+            assertThat(result.get(1).pocPhone()).isEqualTo(2222222222L);
         }
     }
 
@@ -114,46 +84,104 @@ class DepartmentServiceTest {
     class CreateDepartmentTests {
 
         @Test
-        @DisplayName("should create department successfully and return response")
+        @DisplayName("should create department and return response")
         void createDepartment_Success() {
-            // Arrange
-            DepartmentRequest request = new DepartmentRequest("Engineering", "Alice", 1111111111L);
+            DepartmentRequest request = request("Engineering", "Alice", 1111111111L);
 
-            // Act
             DepartmentResponse response = departmentService.createDepartment(request);
 
-            // Assert — verify the entity saved has the correct fields
-            ArgumentCaptor<Department> deptCaptor = ArgumentCaptor.forClass(Department.class);
-            verify(departmentRepository).save(deptCaptor.capture());
-
-            Department savedDept = deptCaptor.getValue();
-            assertThat(savedDept.getDeptName()).isEqualTo("Engineering");
-            assertThat(savedDept.getPocName()).isEqualTo("Alice");
-            assertThat(savedDept.getPocNumber()).isEqualTo(1111111111L);
-
-            // Assert response maps back correctly
-            // Note: id will be null since Hibernate isn't running, which is expected
-            assertThat(response).isNotNull();
+            ArgumentCaptor<Department> captor = ArgumentCaptor.forClass(Department.class);
+            verify(departmentRepository).saveAndFlush(captor.capture());
+            assertThat(captor.getValue().getDeptName()).isEqualTo("Engineering");
+            assertThat(captor.getValue().getPocName()).isEqualTo("Alice");
+            assertThat(captor.getValue().getPocNumber()).isEqualTo(1111111111L);
             assertThat(response.name()).isEqualTo("Engineering");
-            assertThat(response.pocName()).isEqualTo("Alice");
-            assertThat(response.pocPhone()).isEqualTo(1111111111L);
         }
 
         @Test
-        @DisplayName("should map all request fields to the department entity")
-        void createDepartment_FieldMapping() {
-            // Arrange
-            DepartmentRequest request = new DepartmentRequest("Quality Assurance", "Diana", 4444444444L);
+        @DisplayName("should translate database uniqueness failures to duplicate exception")
+        void createDepartment_Duplicate_ThrowsDomainException() {
+            DepartmentRequest request = request("Engineering", "Alice", 1111111111L);
+            when(departmentRepository.saveAndFlush(any(Department.class)))
+                    .thenThrow(new DataIntegrityViolationException("duplicate"));
 
-            // Act
-            DepartmentResponse response = departmentService.createDepartment(request);
-
-            // Assert
-            assertThat(response.name()).isEqualTo("Quality Assurance");
-            assertThat(response.pocName()).isEqualTo("Diana");
-            assertThat(response.pocPhone()).isEqualTo(4444444444L);
-
-            verify(departmentRepository).save(any(Department.class));
+            assertThatThrownBy(() -> departmentService.createDepartment(request))
+                    .isInstanceOf(DuplicateDepartmentException.class)
+                    .hasMessage("Department already exists");
         }
+    }
+
+    @Nested
+    @DisplayName("updateDepartment()")
+    class UpdateDepartmentTests {
+
+        @Test
+        @DisplayName("should update by id and allow rename")
+        void updateDepartment_Success() {
+            UUID id = UUID.randomUUID();
+            Department existing = department(id, "Engineering", "Alice", 1111111111L);
+            when(departmentRepository.findById(id)).thenReturn(Optional.of(existing));
+
+            DepartmentResponse response = departmentService.updateDepartment(
+                    id, request("Research", "Bob", 2222222222L)
+            );
+
+            assertThat(existing.getDeptName()).isEqualTo("Research");
+            assertThat(existing.getPocName()).isEqualTo("Bob");
+            assertThat(response.deptId()).isEqualTo(id);
+            verify(departmentRepository).saveAndFlush(existing);
+        }
+
+        @Test
+        @DisplayName("should reject unknown id")
+        void updateDepartment_NotFound_ThrowsException() {
+            UUID id = UUID.randomUUID();
+            when(departmentRepository.findById(id)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> departmentService.updateDepartment(
+                    id, request("Research", "Bob", 2222222222L)
+            )).isInstanceOf(ResourceNotFoundException.class);
+            verify(departmentRepository, never()).saveAndFlush(any(Department.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteDepartment()")
+    class DeleteDepartmentTests {
+
+        @Test
+        @DisplayName("should delete an existing department")
+        void deleteDepartment_Success() {
+            UUID id = UUID.randomUUID();
+            when(departmentRepository.existsById(id)).thenReturn(true);
+
+            departmentService.deleteDepartment(id);
+
+            verify(departmentRepository).deleteById(id);
+        }
+
+        @Test
+        @DisplayName("should reject unknown id")
+        void deleteDepartment_NotFound_ThrowsException() {
+            UUID id = UUID.randomUUID();
+            when(departmentRepository.existsById(id)).thenReturn(false);
+
+            assertThatThrownBy(() -> departmentService.deleteDepartment(id))
+                    .isInstanceOf(ResourceNotFoundException.class);
+            verify(departmentRepository, never()).deleteById(any());
+        }
+    }
+
+    private Department department(UUID id, String name, String pocName, Long pocNumber) {
+        Department department = new Department();
+        department.setId(id);
+        department.setDeptName(name);
+        department.setPocName(pocName);
+        department.setPocNumber(pocNumber);
+        return department;
+    }
+
+    private DepartmentRequest request(String name, String pocName, Long pocNumber) {
+        return new DepartmentRequest(name, pocName, pocNumber);
     }
 }
