@@ -8,8 +8,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -161,6 +166,28 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody().error()).isEqualTo("Not Found");
             assertThat(response.getBody().message()).isEqualTo("Resource not found");
             assertThat(response.getBody().timeStamp()).isNotNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("handleValidation")
+    class HandleValidationTests {
+
+        @Test
+        @DisplayName("should return BAD_REQUEST with field validation messages")
+        void returnsBadRequestWithFieldMessages() {
+            BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
+            bindingResult.addError(new FieldError("request", "email", "must be a well-formed email address"));
+            MethodArgumentNotValidException exception = mock(MethodArgumentNotValidException.class);
+            when(exception.getBindingResult()).thenReturn(bindingResult);
+
+            ResponseEntity<ErrorResponse> response = handler.handleValidation(exception);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().status()).isEqualTo(400);
+            assertThat(response.getBody().error()).isEqualTo("Bad Request");
+            assertThat(response.getBody().message()).contains("email", "must be a well-formed email address");
         }
     }
 

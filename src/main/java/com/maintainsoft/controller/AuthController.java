@@ -1,6 +1,7 @@
 package com.maintainsoft.controller;
 
 import com.maintainsoft.dto.AuthResponse;
+import jakarta.validation.Valid;
 import com.maintainsoft.dto.LoginRequest;
 import com.maintainsoft.dto.RefreshRequest;
 import com.maintainsoft.service.AuthService;
@@ -15,13 +16,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+    ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         AuthResponse response = authService.login(loginRequest);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh")
-    ResponseEntity<AuthResponse> refresh(@RequestBody RefreshRequest refreshRequest) {
+    ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest refreshRequest) {
         AuthResponse response = authService.refresh(refreshRequest);
         return ResponseEntity.ok(response);
     }

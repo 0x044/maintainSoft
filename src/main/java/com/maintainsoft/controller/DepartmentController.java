@@ -1,6 +1,7 @@
 package com.maintainsoft.controller;
 
 import com.maintainsoft.dto.DeleteResponse;
+import jakarta.validation.Valid;
 import com.maintainsoft.dto.DepartmentRequest;
 import com.maintainsoft.dto.DepartmentResponse;
 import com.maintainsoft.dto.UpdateResponse;
@@ -25,7 +26,7 @@ public class DepartmentController {
     }
 
     @PostMapping("/department")
-    ResponseEntity<DepartmentResponse> createDepartment(@RequestBody DepartmentRequest request){
+    ResponseEntity<DepartmentResponse> createDepartment(@Valid @RequestBody DepartmentRequest request){
         DepartmentResponse response = departmentService.createDepartment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -37,7 +38,7 @@ public class DepartmentController {
     }
 
     @PatchMapping("/department")
-    ResponseEntity<UpdateResponse> updateDepartment(@RequestBody DepartmentRequest departmentRequest){
+    ResponseEntity<UpdateResponse> updateDepartment(@Valid @RequestBody DepartmentRequest departmentRequest){
         UpdateResponse updateResponse = departmentService.updateDepartment(departmentRequest);
 
         return ResponseEntity.status(HttpStatus.OK).body(updateResponse);

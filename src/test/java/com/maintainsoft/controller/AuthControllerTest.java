@@ -12,9 +12,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -47,6 +49,27 @@ class AuthControllerTest {
 
         mockMvc.perform(post("/api/v1/auth/register"))
                 .andExpect(status().isNotFound());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    @DisplayName("Should reject invalid login input before calling the service")
+    void invalidLoginInputIsRejectedAtControllerBoundary() throws Exception {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+        try {
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(authController)
+                    .setValidator(validator)
+                    .build();
+
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"not-an-email\",\"password\":\" \"}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            validator.destroy();
+        }
 
         verifyNoInteractions(authService);
     }
