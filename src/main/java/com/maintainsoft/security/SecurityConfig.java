@@ -1,5 +1,6 @@
 package com.maintainsoft.security;
 
+import com.maintainsoft.service.JwtService;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -9,6 +10,8 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -18,13 +21,18 @@ import org.springframework.security.config.annotation.web.configurers.CsrfConfig
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -52,7 +60,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 ).csrf(CsrfConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt((jwt) -> jwt
-                        .decoder(jwtDecoder())
+                        .decoder(accessJwtDecoder())
                         .jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -94,8 +102,31 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Primary
     JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withPublicKey(this.key).build();
+        return decoderForType("refresh");
+    }
+
+    @Bean
+    JwtDecoder accessJwtDecoder() {
+        return decoderForType("access");
+    }
+
+    private JwtDecoder decoderForType(String expectedType) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(this.key).build();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(JwtService.JWT_ISSUER),
+                tokenTypeValidator(expectedType)
+        ));
+        return decoder;
+    }
+
+    private OAuth2TokenValidator<Jwt> tokenTypeValidator(String expectedType) {
+        return jwt -> expectedType.equals(jwt.getClaimAsString("type"))
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                "invalid_token", "Expected token type: " + expectedType, null
+        ));
     }
 
     @Bean

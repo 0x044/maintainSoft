@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 @Service
 @AllArgsConstructor
 public class JwtService {
+    public static final String JWT_ISSUER = "https://msi.leo-blenny.ts.net";
+
     private final JwtEncoder jwtEncoder;
     private final JwtDecoder jwtDecoder;
 
@@ -24,7 +26,7 @@ public class JwtService {
         Instant now = Instant.now();
 
         JwtClaimsSet claimsSet = JwtClaimsSet.builder()
-                .issuer("https://msi.leo-blenny.ts.net")
+                .issuer(JWT_ISSUER)
                 .issuedAt(now)
                 .expiresAt(now.plus(15, ChronoUnit.MINUTES))
                 .subject(userDetails.getUsername())
@@ -39,7 +41,7 @@ public class JwtService {
         Instant now = Instant.now();
 
         JwtClaimsSet claimsSet = JwtClaimsSet.builder()
-                .issuer("https://msi.leo-blenny.ts.net")
+                .issuer(JWT_ISSUER)
                 .issuedAt(now)
                 .expiresAt(now.plus(7, ChronoUnit.DAYS))
                 .subject(userDetails.getUsername())
