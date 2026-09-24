@@ -58,7 +58,8 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger/**", "/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users", "/api/v1/machine-statuses").hasRole("MANAGER")
-                        .requestMatchers("/api/v1/machines/**").hasAnyRole("MANAGER", "SUPERVISOR")
+                        .requestMatchers("/api/v1/machines/**", "/api/v1/spares/**")
+                        .hasAnyRole("MANAGER", "SUPERVISOR")
                         .anyRequest().authenticated()
                 ).csrf(CsrfConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt((jwt) -> jwt

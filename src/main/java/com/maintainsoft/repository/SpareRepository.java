@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface SpareRepository extends JpaRepository<Spare, UUID> {
     Optional<Spare> findByPartNumber(String partNumber);
+
+    java.util.List<Spare> findAllByOrderByNameAsc();
 }

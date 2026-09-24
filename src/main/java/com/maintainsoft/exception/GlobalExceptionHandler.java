@@ -83,4 +83,18 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(400, "Bad Request", e.getMessage(), Instant.now())
         );
     }
+
+    @ExceptionHandler(DuplicateSpareException.class)
+    ResponseEntity<ErrorResponse> handleDuplicateSpare(DuplicateSpareException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now())
+        );
+    }
+
+    @ExceptionHandler(InvalidSpareException.class)
+    ResponseEntity<ErrorResponse> handleInvalidSpare(InvalidSpareException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request", e.getMessage(), Instant.now())
+        );
+    }
 }

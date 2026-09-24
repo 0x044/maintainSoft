@@ -29,6 +29,15 @@ public class Spare extends BaseEntity {
 
     private String name;
 
+    @Column(length = 1000)
+    private String description;
+
+    @Column(length = 32)
+    private String unit;
+
+    @Column(name = "compatible_machine", length = 255)
+    private String compatibleMachine;
+
     @Column(precision = 19, scale = 4)
     private BigDecimal cost;
 
