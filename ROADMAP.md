@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `7175c3e`, verified 2026-09-24.
+> **Source baseline:** commit `07a2b7b`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -33,7 +33,7 @@ The most urgent facts are:
 - The default full context test still passes against the authorized test PostgreSQL
   database and can mutate it; an opt-in disposable-database profile is available, but
   hermetic default isolation is still open.
-- The current source compiles on Java 26 and 333 tests pass (one opt-in isolated-profile
+- The current source compiles on Java 26 and 334 tests pass (one opt-in isolated-profile
   test is skipped without disposable database variables), but MVC/security and
   concurrency coverage remain incomplete.
 
@@ -67,7 +67,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 333 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 334 tests passed, 1 opt-in test skipped
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -440,7 +440,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 333-test inventory still overstates behavioral coverage. Add:
+The current 334-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -490,7 +490,7 @@ The current 333-test inventory still overstates behavioral coverage. Add:
 - [x] Remove update-history cascade deletion, mark `RepairUpdate`/`RepairCost`
       immutable, and expose only append/read operations.
 - [x] Add `equals`/`hashCode` to `RepairSpareId`.
-- [ ] Separate `Spare.lastPurchaseDate` from general update auditing, even though full
+- [x] Separate `Spare.lastPurchaseDate` from general update auditing, even though full
       purchase history is deferred.
 - [x] Add database checks for nonnegative stock/usage and repair/machine date consistency;
       role non-null enforcement remains open.
@@ -544,8 +544,9 @@ cleanup, operator-supplied opt-in bootstrap values, CORS, the V2–V8
 status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
 INR costs, repair-driven machine status defaults, representative HTTP security
-coverage with JSON 401/403 errors, rollback-only PostgreSQL workflow coverage, and an
-opt-in disposable-database profile are implemented. V1–V8 pass against the authorized
+coverage with JSON 401/403 errors, rollback-only PostgreSQL workflow coverage,
+spare purchase-date audit coverage, and an opt-in disposable-database profile are
+implemented. V1–V8 pass against the authorized
 test database; the opt-in profile is skipped without its three environment variables,
 and hermetic Testcontainers coverage, secret rotation, and the complete role/security
 matrix remain open.
