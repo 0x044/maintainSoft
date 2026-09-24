@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `d6e3608`, verified 2026-09-24.
+> **Source baseline:** commit `47ef006`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -30,7 +30,7 @@ The most urgent facts are:
   still missing.
 - The full context test now passes against the authorized test PostgreSQL database;
   routine isolation and bootstrap-disable test configuration are still open.
-- The current source compiles on Java 26 and 241 database-backed tests pass, but
+- The current source compiles on Java 26 and 264 database-backed tests pass, but
   MVC/security and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
@@ -63,10 +63,10 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 242 tests passed
+Result: BUILD SUCCESS — 264 tests passed
 ```
 
-Flyway validated and applied V1–V4, Hibernate initialized against PostgreSQL 18.6, and
+Flyway validated and applied V1–V5, Hibernate initialized against PostgreSQL 18.6, and
 the application context started successfully. A test-skipping package build also
 succeeds. The passing suite includes the full Spring context test, Mockito unit tests,
 accessor/record tests, direct controller/exception-handler invocations, and focused
@@ -209,6 +209,15 @@ question below explicitly says otherwise.
 | `POST /api/v1/machines` | Creates a machine with default/custom catalog status | Implemented |
 | `PATCH /api/v1/machines/{id}` | Updates machine master data and status | Implemented |
 | `DELETE /api/v1/machines/{id}` | Archives a machine and returns 204 | Implemented |
+| `GET /api/v1/spares` | Lists active spare-part records | Implemented |
+| `GET /api/v1/spares/{id}` | Reads one active spare | Implemented |
+| `POST /api/v1/spares` | Creates a spare with catalog fields and initial stock | Implemented |
+| `PATCH /api/v1/spares/{id}` | Updates spare catalog fields | Implemented |
+| `DELETE /api/v1/spares/{id}` | Archives a spare and returns 204 | Implemented |
+| `POST /api/v1/spares/{id}/stock/receive` | Adds received quantity to the current balance | Implemented |
+| `POST /api/v1/spares/{id}/stock/return` | Returns quantity from a repair and restores balance | Implemented |
+| `POST /api/v1/spares/{id}/stock/adjust` | Sets the absolute nonnegative balance | Implemented |
+| `POST /api/v1/spares/{id}/stock/issue` | Decrements balance and links usage to a repair | Implemented |
 | `GET /api/v1/health` | Authenticated principal echo, not a real health check | Implemented |
 | `GET /api/v1/departments` | Lists active departments | Implemented |
 | `POST /api/v1/departments` | Creates a department with DB-backed duplicate handling | Implemented |
@@ -225,9 +234,11 @@ question below explicitly says otherwise.
 - `MachineStatusService` and `MachineStatusController` provide the V2 status catalog.
 - `MachineService` and `MachineController` provide active machine CRUD, filters, status
   assignment, and archive semantics.
-- `SpareRepository` is currently dormant.
-- There are no technician, spare, repair, repair-update, or repair-spare
-  services/controllers.
+- `SpareService` and `SpareController` provide spare master data and current-balance
+  inventory operations.
+- `RepairRepository` and `RepairSpareRepository` now support repair-linked spare usage,
+  but repair services/controllers are not implemented.
+- There are no technician, repair, or repair-update services/controllers.
 - There is no logout, password lifecycle, or refresh-token repository.
 
 ### Configuration and schema
@@ -240,7 +251,8 @@ question below explicitly says otherwise.
   and adds the catalog foreign key; it requires a controlled migration window because
   the old column is removed.
 - V4 adds machine equipment, placement, lifecycle, and maintenance fields.
-- V2–V4 were validated and applied successfully against the authorized test PostgreSQL
+- V5 adds spare description, unit, and machine-compatibility fields.
+- V1–V5 were validated and applied successfully against the authorized test PostgreSQL
   database; repeatable Testcontainers coverage is still pending.
 - V1 was changed in the latest commit; environments that applied an earlier checksum
   may require an explicit repair/baseline procedure.
@@ -373,7 +385,7 @@ rotation remain open.
 #### P1.5 Isolate the test environment
 
 **Finding:** the full context test now passes against the authorized test database and
-V1–V4 are verified there, but it still inherits production-like configuration and can
+V1–V5 are verified there, but it still inherits production-like configuration and can
 mutate that database. A repeatable isolated test profile is still required.
 
 - [ ] Add a test profile and test-only datasource configuration.
@@ -424,7 +436,8 @@ The current 203-test inventory overstates behavioral coverage. Add:
 
 ### P1 — Data-model corrections
 
-- [ ] Apply the intended soft-delete mapping to `Machine`.
+- [x] Apply active filtering and explicit audited archive behavior to `Machine`; avoid
+      the legacy custom `@SQLDelete` path.
 - [ ] Decide whether deleted `User`, `Department`, and `Spare` rows may be recreated;
       current unique constraints prevent reuse even when repository queries hide those
       deleted rows. Handle `Machine` separately after its soft-delete behavior is fixed.
@@ -433,7 +446,7 @@ The current 203-test inventory overstates behavioral coverage. Add:
 - [x] Link `Machine` records to the catalog, replace the legacy enum/check constraint,
       and add active-machine archive behavior.
 - [x] Add the initial equipment, placement, lifecycle, and maintenance master fields.
-- [ ] Implement the confirmed current-balance inventory model: receive, issue, adjust,
+- [x] Implement the confirmed current-balance inventory model: receive, issue, adjust,
       and return without a required reason, with nonnegative stock and repair links for
       issued parts; do not add a full ledger in this milestone.
 - [ ] Store external technician name and phone as free text on repairs; do not make the
@@ -491,10 +504,10 @@ This is the first business milestone.
   is append-only, and the flow is covered by isolated tests.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
-role mapping, token-purpose separation, CORS, the V2–V4 status/machine foundation, and
-Machine CRUD are implemented. V1–V4 pass against the authorized test database; spare
-inventory, repairs, isolated migration tests, and full HTTP security integration tests
-remain open.
+role mapping, token-purpose separation, CORS, the V2–V5 status/machine/spare foundation,
+Machine CRUD, Spare CRUD, and current-balance inventory are implemented. V1–V5 pass
+against the authorized test database; repairs, isolated migration tests, and full HTTP
+security integration tests remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
