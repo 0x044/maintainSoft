@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `8083229`, verified 2026-09-24.
+> **Source baseline:** commit `59a6972`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -33,7 +33,7 @@ The most urgent facts are:
 - The default full context test still passes against the authorized test PostgreSQL
   database and can mutate it; an opt-in disposable-database profile is available, but
   hermetic default isolation is still open.
-- The current source compiles on Java 26 and 334 tests pass (one opt-in isolated-profile
+- The current source compiles on Java 26 and 336 tests pass (one opt-in isolated-profile
   test is skipped without disposable database variables), but MVC/security and
   concurrency coverage remain incomplete.
 
@@ -67,7 +67,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 334 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 336 tests passed, 1 opt-in test skipped
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -440,12 +440,13 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 334-test inventory still overstates behavioral coverage. Add:
+The current 336-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
 - [x] Real RSA encode/decode tests covering tampering, expiry, issuer, and token purpose.
-- Repository tests for soft deletion, optimistic locking, uniqueness, and audit fields.
+- [x] Add repository integration coverage for soft deletion, archive filtering, and audit fields.
+- [ ] Add repository coverage for optimistic locking and uniqueness races.
 - [x] Add rollback-only PostgreSQL workflow coverage for repair, stock, and cost transactions.
 - [ ] Add clean-database Flyway migration coverage independent of the configured test database.
 - Tests for `DataIntegrityViolationException`, malformed JSON, null values, and
@@ -546,8 +547,8 @@ status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
 INR costs, repair-driven machine status defaults, representative HTTP security
 coverage with JSON 401/403 errors, rollback-only PostgreSQL workflow coverage,
-spare purchase-date audit coverage, and an opt-in disposable-database profile are
-implemented. V1–V8 pass against the authorized
+spare purchase-date audit coverage, repository archive/audit coverage, and an opt-in
+disposable-database profile are implemented. V1–V8 pass against the authorized
 test database; the opt-in profile is skipped without its three environment variables,
 and hermetic Testcontainers coverage, secret rotation, and the complete role/security
 matrix remain open.
