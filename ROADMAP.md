@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `5add8c2`, verified 2026-09-24.
+> **Source baseline:** commit `cc03fc2`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -407,7 +407,8 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 - [ ] Restrict Actuator `startup`/`conditions` and Swagger/OpenAPI by environment.
 - [x] Fix CORS methods and allowed headers for the current API; exact approved origins
       remain unchanged.
-- [ ] Configure explicit security error responses and avoid logging credentials/tokens.
+- [x] Return stable JSON 401/403 responses from the security filter chain.
+- [ ] Review diagnostics/logging to ensure credentials and tokens are not emitted.
 
 ### P1 — Build, test, and migration safety
 
@@ -454,8 +455,10 @@ The current 327-test inventory still overstates behavioral coverage. Add:
 - [x] Add the Jakarta Validation starter and constraints to the current request DTOs.
 - [x] Apply `@Valid` at current controller boundaries and map validation errors to a
       stable 400 response.
-- [ ] Replace the catch-all 500 behavior with specific mappings for 401, 403, 409, and
-      optimistic-lock failures; log unexpected server errors with context.
+- [x] Map persistence conflicts and optimistic-lock failures to non-leaking 409 responses.
+- [x] Return stable JSON 401/403 responses from Spring Security.
+- [ ] Replace the remaining catch-all 500 behavior and log unexpected server errors with
+      context.
 - [ ] Decide whether to use `ProblemDetail` or retain the current `ErrorResponse`
       contract consistently.
 - [x] Redesign Department routes to use plural resources and path IDs.
@@ -539,10 +542,10 @@ role mapping, token-purpose separation, hashed refresh-token rotation/revocation
 cleanup, CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
 INR costs, repair-driven machine status defaults, representative HTTP security
-coverage, and an opt-in disposable-database profile are implemented. V1–V8 pass against
-the authorized test database; the opt-in profile is skipped without its three
-environment variables, and hermetic Testcontainers coverage, secret rotation, and the
-complete role/security matrix remain open.
+coverage with JSON 401/403 errors, and an opt-in disposable-database profile are
+implemented. V1–V8 pass against the authorized test database; the opt-in profile is
+skipped without its three environment variables, and hermetic Testcontainers coverage,
+secret rotation, and the complete role/security matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
