@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `5080217`, verified 2026-09-24.
+> **Source baseline:** commit `87ca15c`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -31,7 +31,7 @@ The most urgent facts are:
   still missing.
 - The full context test now passes against the authorized test PostgreSQL database;
   routine isolation and bootstrap-disable test configuration are still open.
-- The current source compiles on Java 26 and 293 database-backed tests pass, but
+- The current source compiles on Java 26 and 301 database-backed tests pass, but
   MVC/security and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
@@ -64,7 +64,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 293 tests passed
+Result: BUILD SUCCESS — 301 tests passed
 ```
 
 Flyway validated and applied V1–V6, Hibernate initialized against PostgreSQL 18.6, and
@@ -342,7 +342,7 @@ full HTTP 401/403 security coverage is still pending.
 - [x] Add a manager-only `POST /users` flow with server-side role validation.
 - [x] Add the custom JWT authority converter required by the manager-only rule.
 - [x] Replace tests that previously required public supervisor registration.
-- [ ] Add isolated HTTP security tests proving 401/403 behavior for the user endpoint.
+- [x] Add isolated HTTP security tests proving 401/403 behavior for the user endpoint.
 
 **Acceptance:** unauthenticated registration is rejected; only an authorized manager
 can create users, with documented role and department rules, and 401/403 behavior is
@@ -421,7 +421,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 293-test inventory still overstates behavioral coverage. Add:
+The current 301-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -519,16 +519,16 @@ This is the first business milestone.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
 role mapping, token-purpose separation, CORS, the V2–V6 status/machine/spare/repair
-foundation, Machine CRUD, Spare CRUD, current-balance inventory, and repair creation,
-assignment, lifecycle updates, and INR costs are implemented. V1–V6 pass against the
-authorized test database; machine-state automation, isolated migration tests, and full
-HTTP security integration tests remain open.
+foundation, Machine CRUD, Spare CRUD, current-balance inventory, repair creation,
+assignment, lifecycle updates, INR costs, and repair-driven machine status defaults are
+implemented. V1–V6 pass against the authorized test database; isolated migration tests,
+refresh-token rotation/revocation, and the complete role/security matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
 - [x] Enforce `OPEN → IN_PROGRESS → COMPLETED` transitions and append-only corrections.
 - [x] Implement manager assignment, supervisor self-assignment, and supervisor claiming.
-- [ ] Apply repair-default machine status changes: breakdown/open work can set fault or
+- [x] Apply repair-default machine status changes: breakdown/open work can set fault or
       under-maintenance, and completion can set operational.
 - [ ] Allow a later authorized manual status change to override the automatic result.
 - [ ] Add transaction tests for status, cost, assignment, and spare-issue races.
