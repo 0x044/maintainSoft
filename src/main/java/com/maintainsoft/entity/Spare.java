@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
-import org.springframework.data.annotation.LastModifiedDate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -39,7 +38,6 @@ public class Spare extends BaseEntity {
     @Column(precision = 19, scale = 4)
     private BigDecimal cost;
 
-    @LastModifiedDate
     private Instant lastPurchaseDate;
 
     @Column(nullable = false)
