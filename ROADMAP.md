@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `07a2b7b`, verified 2026-09-24.
+> **Source baseline:** commit `8083229`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -474,6 +474,8 @@ The current 334-test inventory still overstates behavioral coverage. Add:
 
 - [x] Apply active filtering and explicit audited archive behavior to `Machine`; avoid
       the legacy custom `@SQLDelete` path.
+- [x] Apply explicit archive behavior to `Department`; avoid its legacy custom
+      `@SQLDelete` path.
 - [ ] Decide whether deleted `User`, `Department`, and `Spare` rows may be recreated;
       current unique constraints prevent reuse even when repository queries hide those
       deleted rows. Handle `Machine` separately after its soft-delete behavior is fixed.
@@ -495,9 +497,8 @@ The current 334-test inventory still overstates behavioral coverage. Add:
 - [x] Add database checks for nonnegative stock/usage and repair/machine date consistency;
       role non-null enforcement remains open.
 - [ ] Review foreign-key indexes and remove indexes duplicated by unique constraints.
-- [ ] Define audited, versioned soft-delete behavior; the current custom `@SQLDelete`
-      statements only set `deleted` and do not update `updated_at`, `updated_by`, or the
-      stored version.
+- [ ] Define audited, versioned soft-delete behavior for the remaining legacy entities;
+      `User` still has a custom `@SQLDelete` statement.
 - [ ] Decide where `@Version` belongs and ensure history entities have the intended
       concurrency behavior.
 - [x] Fix `AuditorAware` handling of anonymous authentication so unauthenticated
