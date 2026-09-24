@@ -9,6 +9,7 @@ import com.maintainsoft.dto.RepairResponse;
 import com.maintainsoft.dto.RepairUpdateResponse;
 import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.entity.Machine;
+import com.maintainsoft.entity.MachineStatus;
 import com.maintainsoft.entity.Repair;
 import com.maintainsoft.entity.RepairCost;
 import com.maintainsoft.entity.RepairUpdate;
@@ -23,6 +24,7 @@ import com.maintainsoft.exception.RepairConflictException;
 import com.maintainsoft.exception.RepairForbiddenException;
 import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.MachineRepository;
+import com.maintainsoft.repository.MachineStatusRepository;
 import com.maintainsoft.repository.RepairCostRepository;
 import com.maintainsoft.repository.RepairRepository;
 import com.maintainsoft.repository.RepairUpdateRepository;
@@ -60,6 +62,9 @@ class RepairServiceTest {
     private MachineRepository machineRepository;
 
     @Mock
+    private MachineStatusRepository machineStatusRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -75,6 +80,8 @@ class RepairServiceTest {
     void createsBreakdownForAnyAuthenticatedUser() {
         Machine machine = machine();
         when(machineRepository.findById(machine.getId())).thenReturn(Optional.of(machine));
+        when(machineStatusRepository.findBySystemKey("FAULT"))
+                .thenReturn(Optional.of(machineStatus("FAULT")));
         when(repairRepository.saveAndFlush(any(Repair.class))).thenAnswer(invocation -> {
             Repair repair = invocation.getArgument(0);
             repair.setId(UUID.randomUUID());
@@ -172,6 +179,8 @@ class RepairServiceTest {
     void translatesConcurrentIdempotencyRaceToConflict() {
         Machine machine = machine();
         when(machineRepository.findById(machine.getId())).thenReturn(Optional.of(machine));
+        when(machineStatusRepository.findBySystemKey("FAULT"))
+                .thenReturn(Optional.of(machineStatus("FAULT")));
         when(repairRepository.saveAndFlush(any(Repair.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate"));
 
@@ -299,6 +308,8 @@ class RepairServiceTest {
         repair.setAssignedSupervisor(supervisor);
         when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
         when(userRepository.findByEmail("supervisor@example.com")).thenReturn(Optional.of(supervisor));
+        when(machineStatusRepository.findBySystemKey("UNDER_MAINTENANCE"))
+                .thenReturn(Optional.of(machineStatus("UNDER_MAINTENANCE")));
         when(repairRepository.save(repair)).thenReturn(repair);
         when(repairUpdateRepository.save(any(RepairUpdate.class))).thenAnswer(invocation -> {
             RepairUpdate update = invocation.getArgument(0);
@@ -315,6 +326,36 @@ class RepairServiceTest {
         assertThat(repair.getRepairStatus()).isEqualTo(RepairStatus.IN_PROGRESS);
         assertThat(response.status()).isEqualTo(RepairStatus.IN_PROGRESS);
         assertThat(response.repairId()).isEqualTo(repair.getId());
+    }
+
+    @Test
+    void completingRepairSetsMachineOperationalAndEndDate() {
+        Machine machine = machine();
+        machine.setStatus(machineStatus("UNDER_MAINTENANCE"));
+        Repair repair = repair(machine, RepairType.BREAKDOWN);
+        repair.setRepairStatus(RepairStatus.IN_PROGRESS);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setRole(Role.SUPERVISOR);
+        repair.setAssignedSupervisor(supervisor);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(userRepository.findByEmail("supervisor@example.com")).thenReturn(Optional.of(supervisor));
+        when(machineStatusRepository.findBySystemKey("OPERATIONAL"))
+                .thenReturn(Optional.of(machineStatus("OPERATIONAL")));
+        when(repairRepository.save(repair)).thenReturn(repair);
+        when(repairUpdateRepository.save(any(RepairUpdate.class))).thenAnswer(invocation -> {
+            RepairUpdate update = invocation.getArgument(0);
+            update.setId(UUID.randomUUID());
+            return update;
+        });
+
+        repairService.addRepairUpdate(
+                repair.getId(),
+                new AddRepairUpdateRequest(RepairStatus.COMPLETED, "Finished"),
+                authentication("supervisor@example.com", "ROLE_SUPERVISOR")
+        );
+
+        assertThat(machine.getStatus().getSystemKey()).isEqualTo("OPERATIONAL");
+        assertThat(repair.getEndDate()).isNotNull();
     }
 
     @Test
@@ -455,6 +496,16 @@ class RepairServiceTest {
         user.setEmail(email);
         user.setName(name);
         return user;
+    }
+
+    private MachineStatus machineStatus(String systemKey) {
+        MachineStatus status = new MachineStatus();
+        status.setId(UUID.randomUUID());
+        status.setSystemKey(systemKey);
+        status.setName(systemKey);
+        status.setColor("#000000");
+        status.setBuiltIn(true);
+        return status;
     }
 
     private Repair repair(Machine machine, RepairType type) {

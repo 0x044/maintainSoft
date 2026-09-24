@@ -9,6 +9,7 @@ import com.maintainsoft.dto.RepairResponse;
 import com.maintainsoft.dto.RepairUpdateResponse;
 import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.entity.Machine;
+import com.maintainsoft.entity.MachineStatus;
 import com.maintainsoft.entity.Repair;
 import com.maintainsoft.entity.RepairCost;
 import com.maintainsoft.entity.RepairUpdate;
@@ -23,6 +24,7 @@ import com.maintainsoft.exception.RepairConflictException;
 import com.maintainsoft.exception.RepairForbiddenException;
 import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.MachineRepository;
+import com.maintainsoft.repository.MachineStatusRepository;
 import com.maintainsoft.repository.RepairCostRepository;
 import com.maintainsoft.repository.RepairRepository;
 import com.maintainsoft.repository.RepairUpdateRepository;
@@ -45,8 +47,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RepairService {
 
+    private static final String FAULT_STATUS_KEY = "FAULT";
+    private static final String UNDER_MAINTENANCE_STATUS_KEY = "UNDER_MAINTENANCE";
+    private static final String OPERATIONAL_STATUS_KEY = "OPERATIONAL";
+
     private final RepairRepository repairRepository;
     private final MachineRepository machineRepository;
+    private final MachineStatusRepository machineStatusRepository;
     private final UserRepository userRepository;
     private final RepairUpdateRepository repairUpdateRepository;
     private final RepairCostRepository repairCostRepository;
@@ -100,6 +107,9 @@ public class RepairService {
         repair.setStartDate(request.startDate() == null ? Instant.now() : request.startDate());
         repair.setRepairStatus(RepairStatus.OPEN);
         repair.setIdempotencyKey(request.idempotencyKey());
+        if (request.repairType() == RepairType.BREAKDOWN) {
+            applyAutomaticMachineStatus(repair, RepairStatus.OPEN);
+        }
 
         if (hasRole(authentication, Role.SUPERVISOR)) {
             repair.setAssignedSupervisor(currentUser(authentication));
@@ -206,6 +216,7 @@ public class RepairService {
             if (request.status() == RepairStatus.COMPLETED) {
                 repair.setEndDate(Instant.now());
             }
+            applyAutomaticMachineStatus(repair, request.status());
             repairRepository.save(repair);
         }
 
@@ -246,6 +257,27 @@ public class RepairService {
         cost.setDescription(request.description());
         repairCostRepository.save(cost);
         return toCostResponse(cost);
+    }
+
+    private void applyAutomaticMachineStatus(Repair repair, RepairStatus newStatus) {
+        String systemKey = switch (newStatus) {
+            case OPEN -> repair.getRepairType() == RepairType.BREAKDOWN ? FAULT_STATUS_KEY : null;
+            case IN_PROGRESS -> UNDER_MAINTENANCE_STATUS_KEY;
+            case COMPLETED -> OPERATIONAL_STATUS_KEY;
+        };
+        if (systemKey == null) {
+            return;
+        }
+
+        MachineStatus status = machineStatusRepository.findBySystemKey(systemKey)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Machine status not configured: " + systemKey
+                ));
+        Machine machine = repair.getMachine();
+        if (machine.getStatus() == null || !status.getId().equals(machine.getStatus().getId())) {
+            machine.setStatus(status);
+            machineRepository.save(machine);
+        }
     }
 
     private void ensureCanPost(Authentication authentication, Repair repair) {
