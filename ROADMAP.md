@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `d86837d`, verified 2026-09-24.
+> **Source baseline:** commit `77d3232`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -60,10 +60,10 @@ The following checks were run with Java 26:
 
 ```text
 mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
-Result: BUILD SUCCESS — 226 tests passed
+Result: BUILD SUCCESS — 240 tests passed
 ```
 
-A test-skipping package build also succeeds. The 226 passing tests are mostly
+A test-skipping package build also succeeds. The 240 passing tests are mostly
 Mockito unit tests, accessor/record tests, direct controller/exception-handler
 invocations, and focused security/validation tests.
 
@@ -204,6 +204,11 @@ question below explicitly says otherwise.
 | `POST /api/v1/users` | Manager-only; creates a `SUPERVISOR` account | Implemented, initial slice |
 | `GET /api/v1/machine-statuses` | Lists built-in and active custom statuses | Implemented |
 | `POST /api/v1/machine-statuses` | Manager-only; creates a custom status | Implemented, creation-only |
+| `GET /api/v1/machines` | Lists active machines with optional department/status filters | Implemented |
+| `GET /api/v1/machines/{id}` | Reads one active machine | Implemented |
+| `POST /api/v1/machines` | Creates a machine with default/custom catalog status | Implemented |
+| `PATCH /api/v1/machines/{id}` | Updates machine master data and status | Implemented |
+| `DELETE /api/v1/machines/{id}` | Archives a machine and returns 204 | Implemented |
 | `GET /api/v1/health` | Authenticated principal echo, not a real health check | Implemented |
 | `GET /api/v1/departments` | Lists active departments | Implemented |
 | `POST /api/v1/departments` | Creates a department with DB-backed duplicate handling | Implemented |
@@ -218,8 +223,10 @@ question below explicitly says otherwise.
 - `UserManagementService` and `UserController` provide the initial manager-only
   supervisor invitation path.
 - `MachineStatusService` and `MachineStatusController` provide the V2 status catalog.
-- `MachineRepository` and `SpareRepository` are currently dormant.
-- There are no technician, machine, spare, repair, repair-update, or repair-spare
+- `MachineService` and `MachineController` provide active machine CRUD, filters, status
+  assignment, and archive semantics.
+- `SpareRepository` is currently dormant.
+- There are no technician, spare, repair, repair-update, or repair-spare
   services/controllers.
 - There is no logout, password lifecycle, or refresh-token repository.
 
@@ -228,9 +235,12 @@ question below explicitly says otherwise.
 - `spring.flyway.enabled=true` and `spring.jpa.hibernate.ddl-auto=validate` are now
   active.
 - `V1__init_schema.sql` has been reduced to one table/index/constraint block.
-- V2 adds an additive `machine_statuses` catalog and seeds the five built-in statuses;
-  it does not yet change the legacy `machines.status` column.
-- The migrations have not been proven against a disposable empty PostgreSQL database.
+- V2 adds an additive `machine_statuses` catalog and seeds the five built-in statuses.
+- V3 backfills existing machines, replaces the legacy status column with `status_id`,
+  and adds the catalog foreign key; it requires a controlled migration window because
+  the old column is removed.
+- V4 adds machine equipment, placement, lifecycle, and maintenance fields.
+- V2–V4 have not been proven against a disposable PostgreSQL database.
 - V1 was changed in the latest commit; environments that applied an earlier checksum
   may require an explicit repair/baseline procedure.
 - The schema lacks important invariants for nonnegative stock, positive spare usage,
@@ -314,9 +324,9 @@ covered by HTTP security tests.
 
 #### P1.1 Enforce an explicit role matrix
 
-**Finding:** URL-level authorization now protects the initial manager-only user route,
-but method-level authorization is not enabled and the complete role matrix is not yet
-covered by HTTP tests.
+**Finding:** URL-level authorization now protects manager-only user/status routes and
+manager/supervisor machine routes, but method-level authorization is not enabled and
+the complete role matrix is not yet covered by HTTP tests.
 
 - [x] Implement the initial confirmed role matrix for the user route: managers and
       supervisors share business operations; manager-only actions cover user management.
@@ -417,8 +427,9 @@ The current 203-test inventory overstates behavioral coverage. Add:
       deleted rows. Handle `Machine` separately after its soft-delete behavior is fixed.
 - [x] Add the manager-managed status catalog with built-in statuses, custom
       names/colors, duplicate custom names, and UUID API references.
-- [ ] Link `Machine` records to the catalog in a later migration and replace the
-      legacy enum/check constraint.
+- [x] Link `Machine` records to the catalog, replace the legacy enum/check constraint,
+      and add active-machine archive behavior.
+- [x] Add the initial equipment, placement, lifecycle, and maintenance master fields.
 - [ ] Implement the confirmed current-balance inventory model: receive, issue, adjust,
       and return without a required reason, with nonnegative stock and repair links for
       issued parts; do not add a full ledger in this milestone.
@@ -477,9 +488,9 @@ This is the first business milestone.
   is append-only, and the flow is covered by isolated tests.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
-role mapping, token-purpose separation, CORS, and the V2 machine-status catalog are
-implemented. Machine linkage, spare, repair, and full HTTP security integration tests
-remain open.
+role mapping, token-purpose separation, CORS, the V2–V4 status/machine foundation, and
+Machine CRUD are implemented. Spare inventory, repairs, migration integration, and full
+HTTP security integration tests remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
