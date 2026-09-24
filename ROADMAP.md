@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `cf41a27`, verified 2026-09-24.
+> **Source baseline:** commit `58910d8`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -25,15 +25,15 @@ The most urgent facts are:
   application JAR. It must be treated as compromised and rotated.
 - The bootstrap manager uses hard-coded, publicly known credentials.
 - Public registration is removed; manager-only supervisor invitations now exist.
-- URL-level role rules cover the initial user/status/machine/repair routes, and initial
-  HTTP 401/403 coverage is green, but method authorization and the complete role matrix
-  remain untested.
+- URL-level role rules cover the initial user/status/machine/repair routes, and
+  representative HTTP 401/403 coverage is green, but method authorization and the
+  complete role matrix remain untested.
 - Access and refresh token purposes are separated; hashed refresh-token rotation,
   family replay revocation, logout, and scheduled cleanup are implemented.
 - The default full context test still passes against the authorized test PostgreSQL
   database and can mutate it; an opt-in disposable-database profile is available, but
   hermetic default isolation is still open.
-- The current source compiles on Java 26 and 315 tests pass (one opt-in isolated-profile
+- The current source compiles on Java 26 and 325 tests pass (one opt-in isolated-profile
   test is skipped without disposable database variables), but MVC/security and
   concurrency coverage remain incomplete.
 
@@ -67,7 +67,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 315 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 325 tests passed, 1 opt-in test skipped
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -205,7 +205,7 @@ question below explicitly says otherwise.
 |---|---|---|
 | `POST /api/v1/auth/register` | No longer mapped; public registration was removed | **Removed** |
 | `POST /api/v1/auth/login` | Database-backed BCrypt authentication; returns tokens | Implemented |
-| `POST /api/v1/auth/refresh` | Refresh-only decoder rotates a hashed, family-bound token | Implemented: rotation/replay revocation, no cleanup job |
+| `POST /api/v1/auth/refresh` | Refresh-only decoder rotates a hashed, family-bound token | Implemented: rotation/replay revocation and cleanup |
 | `POST /api/v1/auth/logout` | Authenticated refresh-token revocation; returns 204 | Implemented |
 | `POST /api/v1/users` | Manager-only; creates a `SUPERVISOR` account | Implemented, initial slice |
 | `GET /api/v1/machine-statuses` | Lists built-in and active custom statuses | Implemented |
@@ -341,8 +341,9 @@ credentials published in source or history.
 #### P0.3 Close the public registration path
 
 **Finding:** public registration was removed from the controller/service, and only exact
-login/refresh POST routes are public. The manager invitation endpoint now exists, but
-full HTTP 401/403 security coverage is still pending.
+login/refresh POST routes are public. The manager invitation endpoint exists, and
+representative HTTP 401/403 coverage now spans user, status, stock, and repair routes;
+the complete role matrix remains pending.
 
 **Tasks:**
 
@@ -363,22 +364,24 @@ covered by HTTP security tests.
 
 #### P1.1 Enforce an explicit role matrix
 
-**Finding:** URL-level authorization now protects manager-only user/status routes and
-manager/supervisor machine routes, but method-level authorization is not enabled and
-the complete role matrix is not yet covered by HTTP tests.
+**Finding:** URL-level authorization now protects manager-only user/status routes,
+manager/supervisor machine and stock routes, and the role-specific repair mutation
+boundaries. Method-level authorization is not enabled, and the complete role matrix is
+not yet covered by HTTP tests.
 
 - [x] Implement the initial confirmed role matrix for the user route: managers and
       supervisors share business operations; manager-only actions cover user management.
 - [ ] Enable method security after checking the current AOP auto-configuration exclusion.
 - [x] Add a custom JWT authority converter so `ROLE_MANAGER` and `ROLE_SUPERVISOR`
       claims map to Spring role authorities.
-- [ ] Add MockMvc/security tests for 401, 403, and the complete role matrix.
+- [x] Add MockMvc/security tests for 401, 403, and representative
+      manager/supervisor/reporter boundaries across user, status, stock, and repair routes.
+- [ ] Complete the role matrix coverage for every protected operation.
 
 #### P1.2 Separate access and refresh token validation
 
-**Finding:** access and refresh decoders are now separate, and both validate the configured
-issuer and expected `type` claim. Audience policy, required-claim policy, and refresh
-rotation remain open.
+**Finding:** access and refresh decoders are separate and validate issuer, purpose, and
+refresh-token `jti`; audience policy and broader required-claim policy remain open.
 
 - [x] Add an access-token validator requiring the correct signature, issuer, and token
       type.
@@ -435,7 +438,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 315-test inventory still overstates behavioral coverage. Add:
+The current 325-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -535,11 +538,11 @@ Current progress: manager user invitation, Department CRUD, request validation, 
 role mapping, token-purpose separation, hashed refresh-token rotation/revocation/logout and
 cleanup, CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
-INR costs, repair-driven machine status defaults, initial HTTP security coverage, and an
-opt-in disposable-database profile are implemented. V1–V8 pass against the authorized
-test database; the opt-in profile is skipped without its three environment variables,
-and hermetic Testcontainers coverage, secret rotation, and the complete role/security
-matrix remain open.
+INR costs, repair-driven machine status defaults, representative HTTP security
+coverage, and an opt-in disposable-database profile are implemented. V1–V8 pass against
+the authorized test database; the opt-in profile is skipped without its three
+environment variables, and hermetic Testcontainers coverage, secret rotation, and the
+complete role/security matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
