@@ -1,6 +1,8 @@
 package com.maintainsoft.exception;
 
 import com.maintainsoft.dto.ErrorResponse;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -123,6 +125,20 @@ public class GlobalExceptionHandler {
     ResponseEntity<ErrorResponse> handleRepairConflict(RepairConflictException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now())
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", "The requested change conflicts with existing data", Instant.now())
+        );
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(OptimisticLockingFailureException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", "The record changed while the request was being processed", Instant.now())
         );
     }
 }

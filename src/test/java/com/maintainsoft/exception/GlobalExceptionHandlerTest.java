@@ -5,6 +5,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -188,6 +190,35 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody().status()).isEqualTo(400);
             assertThat(response.getBody().error()).isEqualTo("Bad Request");
             assertThat(response.getBody().message()).contains("email", "must be a well-formed email address");
+        }
+    }
+
+    @Nested
+    @DisplayName("database conflict handlers")
+    class DatabaseConflictHandlerTests {
+
+        @Test
+        @DisplayName("should map data integrity violations to a non-leaking 409")
+        void mapsDataIntegrityViolationToConflict() {
+            ResponseEntity<ErrorResponse> response = handler.handleDataIntegrityViolation(
+                    new DataIntegrityViolationException("secret SQL detail")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().message()).doesNotContain("secret SQL detail");
+        }
+
+        @Test
+        @DisplayName("should map optimistic locking failures to a non-leaking 409")
+        void mapsOptimisticLockingFailureToConflict() {
+            ResponseEntity<ErrorResponse> response = handler.handleOptimisticLockingFailure(
+                    new OptimisticLockingFailureException("secret lock detail")
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().message()).doesNotContain("secret lock detail");
         }
     }
 
