@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `cc03fc2`, verified 2026-09-24.
+> **Source baseline:** commit `8eef437`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -318,19 +318,18 @@ being protected.
 
 #### P0.2 Remove predictable bootstrap credentials
 
-**Finding:** `DatabaseInitializer` is now disabled by default and runs only when
-`app.bootstrap.enabled=true`; if explicitly enabled, it still creates a manager using
-hard-coded identity and password values.
+**Finding:** `DatabaseInitializer` is now disabled by default and requires explicit
+operator-supplied department/manager properties when `app.bootstrap.enabled=true`; no
+personal seed identity or predictable password remains in source.
 
 **Tasks:**
 
 - [x] Disable automatic production seeding; it is now opt-in via
       `app.bootstrap.enabled=true`.
-- [ ] Use a one-time, externally supplied bootstrap secret or an explicit operator
-      command.
+- [x] Use externally supplied bootstrap properties rather than source literals.
 - [ ] Rotate any previously seeded manager credentials in existing deployments.
 - [ ] Audit and disable or investigate accounts created through public registration.
-- [ ] Remove hard-coded personal seed data from the source and deployment process.
+- [x] Remove hard-coded personal seed data from the source and deployment process.
 - [ ] Add a forced password-change/credential-rotation path.
 - [ ] Make initialization safe under concurrent application instances and when all
       existing users are soft-deleted.
@@ -539,7 +538,8 @@ This is the first business milestone.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
 role mapping, token-purpose separation, hashed refresh-token rotation/revocation/logout and
-cleanup, CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD,
+cleanup, operator-supplied opt-in bootstrap values, CORS, the V2–V8
+status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
 INR costs, repair-driven machine status defaults, representative HTTP security
 coverage with JSON 401/403 errors, and an opt-in disposable-database profile are
