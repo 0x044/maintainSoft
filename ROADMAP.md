@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `87ca15c`, verified 2026-09-24.
+> **Source baseline:** commit `1ba8c3f`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -31,7 +31,7 @@ The most urgent facts are:
   still missing.
 - The full context test now passes against the authorized test PostgreSQL database;
   routine isolation and bootstrap-disable test configuration are still open.
-- The current source compiles on Java 26 and 301 database-backed tests pass, but
+- The current source compiles on Java 26 and 313 database-backed tests pass, but
   MVC/security and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
@@ -64,10 +64,10 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 301 tests passed
+Result: BUILD SUCCESS — 313 tests passed
 ```
 
-Flyway validated and applied V1–V6, Hibernate initialized against PostgreSQL 18.6, and
+Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
 the application context started successfully. A test-skipping package build also
 succeeds. The passing suite includes the full Spring context test, Mockito unit tests,
 accessor/record tests, direct controller/exception-handler invocations, and focused
@@ -201,7 +201,8 @@ question below explicitly says otherwise.
 |---|---|---|
 | `POST /api/v1/auth/register` | No longer mapped; public registration was removed | **Removed** |
 | `POST /api/v1/auth/login` | Database-backed BCrypt authentication; returns tokens | Implemented |
-| `POST /api/v1/auth/refresh` | Refresh-only decoder issues a new pair | Incomplete: no rotation/revocation |
+| `POST /api/v1/auth/refresh` | Refresh-only decoder rotates a hashed, family-bound token | Implemented: rotation/replay revocation, no cleanup job |
+| `POST /api/v1/auth/logout` | Authenticated refresh-token revocation; returns 204 | Implemented |
 | `POST /api/v1/users` | Manager-only; creates a `SUPERVISOR` account | Implemented, initial slice |
 | `GET /api/v1/machine-statuses` | Lists built-in and active custom statuses | Implemented |
 | `POST /api/v1/machine-statuses` | Manager-only; creates a custom status | Implemented, creation-only |
@@ -251,8 +252,10 @@ question below explicitly says otherwise.
   manager assignment, supervisor claim, append-only updates, and INR cost entries.
 - `RepairUpdateRepository` and `RepairCostRepository` provide append-only history reads.
 - `RepairSpareRepository` supports repair-linked spare usage.
+- `RefreshTokenService` and `RefreshTokenRepository` store only SHA-256 hashes, rotate
+  token families under a pessimistic lock, and revoke replays.
 - The legacy `Technician` entity remains dormant; repairs use free-text technician fields.
-- There is no logout, password lifecycle, or refresh-token repository.
+- There is no password lifecycle or refresh-token cleanup job.
 
 ### Configuration and schema
 
@@ -267,7 +270,9 @@ question below explicitly says otherwise.
 - V5 adds spare description, unit, and machine-compatibility fields.
 - V6 adds repair supervisor assignment, free-text external technician fields, and the
   append-only `repair_costs` table.
-- V1–V6 were validated and applied successfully against the authorized test PostgreSQL
+- V7 adds nonnegative stock/usage and lifecycle-date checks.
+- V8 adds the hashed refresh-token/family persistence table.
+- V1–V8 were validated and applied successfully against the authorized test PostgreSQL
   database; repeatable Testcontainers coverage is still pending.
 - V1 was changed in the latest commit; environments that applied an earlier checksum
   may require an explicit repair/baseline procedure.
@@ -372,18 +377,18 @@ rotation remain open.
 - [x] Add an access-token validator requiring the correct signature, issuer, and token
       type.
 - [x] Use separate refresh validation rules.
-- [ ] Add a random `jti` to refresh tokens.
+- [x] Add a random `jti` to refresh tokens and persist only their hashes.
 - [x] Test that access tokens cannot access protected endpoints and refresh tokens
       cannot be accepted by the access decoder.
 
 #### P1.3 Add refresh rotation, revocation, and logout
 
-- [ ] Add a `RefreshToken` persistence model, preferably storing a hash or `jti`, not a
-      raw bearer token.
-- [ ] Rotate refresh tokens atomically on every successful refresh.
-- [ ] Reject replay of a consumed token and revoke token families when reuse is
+- [x] Add a `RefreshToken` persistence model storing a hash and `jti`, not a raw
+      bearer token.
+- [x] Rotate refresh tokens atomically on every successful refresh.
+- [x] Reject replay of a consumed token and revoke token families when reuse is
       detected.
-- [ ] Add `POST /api/v1/auth/logout` and an expiry cleanup strategy.
+- [x] Add `POST /api/v1/auth/logout`; expiry cleanup remains open.
 - [ ] Decide how user deactivation invalidates existing access tokens.
 
 #### P1.4 Add abuse controls and safe diagnostics
@@ -400,7 +405,7 @@ rotation remain open.
 #### P1.5 Isolate the test environment
 
 **Finding:** the full context test now passes against the authorized test database and
-V1–V6 are verified there, but it still inherits production-like configuration and can
+V1–V8 are verified there, but it still inherits production-like configuration and can
 mutate that database. A repeatable isolated test profile is still required.
 
 - [ ] Add a test profile and test-only datasource configuration.
@@ -411,7 +416,7 @@ mutate that database. A repeatable isolated test profile is still required.
       to hide checksum or schema mismatches.
 - [ ] Align the runtime and Maven-plugin Flyway versions, or remove the unused Maven
       plugin and document the supported migration workflow.
-- [ ] Add clean-database migration tests in addition to the successful V1→V6 test-DB
+- [ ] Add clean-database migration tests in addition to the successful V1→V8 test-DB
       run.
 - [ ] Make `mvn verify` safe by default.
 
@@ -421,7 +426,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 301-test inventory still overstates behavioral coverage. Add:
+The current 313-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -471,8 +476,8 @@ The current 301-test inventory still overstates behavioral coverage. Add:
 - [x] Add `equals`/`hashCode` to `RepairSpareId`.
 - [ ] Separate `Spare.lastPurchaseDate` from general update auditing, even though full
       purchase history is deferred.
-- [ ] Add database checks for stock, repair-spare quantities, roles, and repair date
-      consistency.
+- [x] Add database checks for nonnegative stock/usage and repair/machine date consistency;
+      role non-null enforcement remains open.
 - [ ] Review foreign-key indexes and remove indexes duplicated by unique constraints.
 - [ ] Define audited, versioned soft-delete behavior; the current custom `@SQLDelete`
       statements only set `deleted` and do not update `updated_at`, `updated_by`, or the
@@ -518,11 +523,12 @@ This is the first business milestone.
   is append-only, and the flow is covered by isolated tests.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
-role mapping, token-purpose separation, CORS, the V2–V6 status/machine/spare/repair
-foundation, Machine CRUD, Spare CRUD, current-balance inventory, repair creation,
-assignment, lifecycle updates, INR costs, and repair-driven machine status defaults are
-implemented. V1–V6 pass against the authorized test database; isolated migration tests,
-refresh-token rotation/revocation, and the complete role/security matrix remain open.
+role mapping, token-purpose separation, hashed refresh-token rotation/revocation/logout,
+CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD, Spare CRUD,
+current-balance inventory, repair creation, assignment, lifecycle updates, INR costs,
+repair-driven machine status defaults, and initial HTTP security coverage are implemented.
+V1–V8 pass against the authorized test database; isolated migration tests, refresh-token
+cleanup, secret rotation, and the complete role/security matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
