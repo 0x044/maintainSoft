@@ -2,6 +2,10 @@ package com.maintainsoft.controller;
 
 import com.maintainsoft.dto.CreateSpareRequest;
 import com.maintainsoft.dto.SpareResponse;
+import com.maintainsoft.dto.StockAdjustmentRequest;
+import com.maintainsoft.dto.StockIssueRequest;
+import com.maintainsoft.dto.StockQuantityRequest;
+import com.maintainsoft.dto.StockReturnRequest;
 import com.maintainsoft.dto.UpdateSpareRequest;
 import com.maintainsoft.service.SpareService;
 import jakarta.validation.Valid;
@@ -48,6 +52,38 @@ public class SpareController {
             @Valid @RequestBody UpdateSpareRequest request
     ) {
         return ResponseEntity.ok(spareService.updateSpare(id, request));
+    }
+
+    @PostMapping("/{id}/stock/receive")
+    ResponseEntity<SpareResponse> receiveStock(
+            @PathVariable UUID id,
+            @Valid @RequestBody StockQuantityRequest request
+    ) {
+        return ResponseEntity.ok(spareService.receiveStock(id, request));
+    }
+
+    @PostMapping("/{id}/stock/return")
+    ResponseEntity<SpareResponse> returnStock(
+            @PathVariable UUID id,
+            @Valid @RequestBody StockReturnRequest request
+    ) {
+        return ResponseEntity.ok(spareService.returnStock(id, request));
+    }
+
+    @PostMapping("/{id}/stock/adjust")
+    ResponseEntity<SpareResponse> adjustStock(
+            @PathVariable UUID id,
+            @Valid @RequestBody StockAdjustmentRequest request
+    ) {
+        return ResponseEntity.ok(spareService.adjustStock(id, request));
+    }
+
+    @PostMapping("/{id}/stock/issue")
+    ResponseEntity<SpareResponse> issueStock(
+            @PathVariable UUID id,
+            @Valid @RequestBody StockIssueRequest request
+    ) {
+        return ResponseEntity.ok(spareService.issueStock(id, request));
     }
 
     @DeleteMapping("/{id}")

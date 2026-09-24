@@ -2,8 +2,16 @@ package com.maintainsoft.service;
 
 import com.maintainsoft.dto.CreateSpareRequest;
 import com.maintainsoft.dto.SpareResponse;
+import com.maintainsoft.dto.StockAdjustmentRequest;
+import com.maintainsoft.dto.StockIssueRequest;
+import com.maintainsoft.dto.StockQuantityRequest;
+import com.maintainsoft.dto.StockReturnRequest;
 import com.maintainsoft.dto.UpdateSpareRequest;
+import com.maintainsoft.entity.Repair;
+import com.maintainsoft.entity.RepairSpare;
 import com.maintainsoft.entity.Spare;
+import com.maintainsoft.repository.RepairRepository;
+import com.maintainsoft.repository.RepairSpareRepository;
 import com.maintainsoft.exception.DuplicateSpareException;
 import com.maintainsoft.exception.InvalidSpareException;
 import com.maintainsoft.exception.ResourceNotFoundException;
@@ -31,6 +39,12 @@ class SpareServiceTest {
 
     @Mock
     private SpareRepository spareRepository;
+
+    @Mock
+    private RepairRepository repairRepository;
+
+    @Mock
+    private RepairSpareRepository repairSpareRepository;
 
     @InjectMocks
     private SpareService spareService;
@@ -127,6 +141,99 @@ class SpareServiceTest {
 
         assertThatThrownBy(() -> spareService.getSpare(id))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void receivesStockUsingLockedBalance() {
+        UUID id = UUID.randomUUID();
+        Spare spare = spare("Bearing", "BRG-001", 4);
+        spare.setId(id);
+        when(spareRepository.findByIdForUpdate(id)).thenReturn(Optional.of(spare));
+        when(spareRepository.save(spare)).thenReturn(spare);
+
+        SpareResponse response = spareService.receiveStock(id, new StockQuantityRequest(3));
+
+        assertThat(response.stock()).isEqualTo(7);
+    }
+
+    @Test
+    void adjustsStockToAnAbsoluteBalance() {
+        UUID id = UUID.randomUUID();
+        Spare spare = spare("Bearing", "BRG-001", 4);
+        spare.setId(id);
+        when(spareRepository.findByIdForUpdate(id)).thenReturn(Optional.of(spare));
+        when(spareRepository.save(spare)).thenReturn(spare);
+
+        SpareResponse response = spareService.adjustStock(id, new StockAdjustmentRequest(0));
+
+        assertThat(response.stock()).isZero();
+    }
+
+    @Test
+    void rejectsNegativeAbsoluteAdjustment() {
+        assertThatThrownBy(() -> spareService.adjustStock(
+                UUID.randomUUID(), new StockAdjustmentRequest(-1)
+        )).isInstanceOf(InvalidSpareException.class);
+    }
+
+    @Test
+    void issuesStockAndLinksItToRepair() {
+        UUID spareId = UUID.randomUUID();
+        UUID repairId = UUID.randomUUID();
+        Spare spare = spare("Bearing", "BRG-001", 4);
+        spare.setId(spareId);
+        Repair repair = new Repair();
+        repair.setId(repairId);
+        when(spareRepository.findByIdForUpdate(spareId)).thenReturn(Optional.of(spare));
+        when(repairRepository.findById(repairId)).thenReturn(Optional.of(repair));
+        when(repairSpareRepository.findById(any())).thenReturn(Optional.empty());
+        when(repairSpareRepository.save(any(RepairSpare.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(spareRepository.save(spare)).thenReturn(spare);
+
+        SpareResponse response = spareService.issueStock(
+                spareId, new StockIssueRequest(2, repairId)
+        );
+
+        assertThat(response.stock()).isEqualTo(2);
+        verify(repairSpareRepository).save(any(RepairSpare.class));
+    }
+
+    @Test
+    void rejectsIssuingMoreThanAvailableStock() {
+        UUID spareId = UUID.randomUUID();
+        Spare spare = spare("Bearing", "BRG-001", 1);
+        spare.setId(spareId);
+        when(spareRepository.findByIdForUpdate(spareId)).thenReturn(Optional.of(spare));
+
+        assertThatThrownBy(() -> spareService.issueStock(
+                spareId, new StockIssueRequest(2, UUID.randomUUID())
+        )).isInstanceOf(InvalidSpareException.class);
+    }
+
+    @Test
+    void returnsStockAndReducesRepairUsage() {
+        UUID spareId = UUID.randomUUID();
+        UUID repairId = UUID.randomUUID();
+        Spare spare = spare("Bearing", "BRG-001", 1);
+        spare.setId(spareId);
+        Repair repair = new Repair();
+        repair.setId(repairId);
+        RepairSpare repairSpare = new RepairSpare();
+        repairSpare.getId().setRepairId(repairId);
+        repairSpare.getId().setSpareId(spareId);
+        repairSpare.setUsedQuantity(2);
+        when(spareRepository.findByIdForUpdate(spareId)).thenReturn(Optional.of(spare));
+        when(repairRepository.findById(repairId)).thenReturn(Optional.of(repair));
+        when(repairSpareRepository.findById(any())).thenReturn(Optional.of(repairSpare));
+        when(repairSpareRepository.save(repairSpare)).thenReturn(repairSpare);
+        when(spareRepository.save(spare)).thenReturn(spare);
+
+        SpareResponse response = spareService.returnStock(
+                spareId, new StockReturnRequest(1, repairId)
+        );
+
+        assertThat(response.stock()).isEqualTo(2);
+        assertThat(repairSpare.getUsedQuantity()).isEqualTo(1);
     }
 
     private Spare spare(String name, String partNumber, int stock) {

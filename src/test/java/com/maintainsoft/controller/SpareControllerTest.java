@@ -2,6 +2,10 @@ package com.maintainsoft.controller;
 
 import com.maintainsoft.dto.CreateSpareRequest;
 import com.maintainsoft.dto.SpareResponse;
+import com.maintainsoft.dto.StockAdjustmentRequest;
+import com.maintainsoft.dto.StockIssueRequest;
+import com.maintainsoft.dto.StockQuantityRequest;
+import com.maintainsoft.dto.StockReturnRequest;
 import com.maintainsoft.dto.UpdateSpareRequest;
 import com.maintainsoft.service.SpareService;
 import org.junit.jupiter.api.Test;
@@ -78,6 +82,54 @@ class SpareControllerTest {
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         verify(spareService).archiveSpare(id);
+    }
+
+    @Test
+    void receiveStockReturnsUpdatedSpare() {
+        UUID id = UUID.randomUUID();
+        StockQuantityRequest request = new StockQuantityRequest(3);
+        when(spareService.receiveStock(id, request)).thenReturn(response());
+
+        ResponseEntity<SpareResponse> result = spareController.receiveStock(id, request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(spareService).receiveStock(id, request);
+    }
+
+    @Test
+    void issueStockReturnsUpdatedSpare() {
+        UUID id = UUID.randomUUID();
+        StockIssueRequest request = new StockIssueRequest(2, UUID.randomUUID());
+        when(spareService.issueStock(id, request)).thenReturn(response());
+
+        ResponseEntity<SpareResponse> result = spareController.issueStock(id, request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(spareService).issueStock(id, request);
+    }
+
+    @Test
+    void returnStockReturnsUpdatedSpare() {
+        UUID id = UUID.randomUUID();
+        StockReturnRequest request = new StockReturnRequest(1, UUID.randomUUID());
+        when(spareService.returnStock(id, request)).thenReturn(response());
+
+        ResponseEntity<SpareResponse> result = spareController.returnStock(id, request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(spareService).returnStock(id, request);
+    }
+
+    @Test
+    void adjustStockReturnsUpdatedSpare() {
+        UUID id = UUID.randomUUID();
+        StockAdjustmentRequest request = new StockAdjustmentRequest(0);
+        when(spareService.adjustStock(id, request)).thenReturn(response());
+
+        ResponseEntity<SpareResponse> result = spareController.adjustStock(id, request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(spareService).adjustStock(id, request);
     }
 
     @Test
