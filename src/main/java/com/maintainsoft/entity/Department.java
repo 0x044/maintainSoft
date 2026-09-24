@@ -2,7 +2,6 @@ package com.maintainsoft.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.util.ArrayList;
@@ -15,7 +14,6 @@ import java.util.List;
 @Table(name = "departments",
     uniqueConstraints = @UniqueConstraint(columnNames = "deptName")
 )
-@SQLDelete(sql = "UPDATE departments set deleted = true where id = ? and version = ?")
 @SQLRestriction("deleted = false")
 public class Department extends BaseEntity{
 

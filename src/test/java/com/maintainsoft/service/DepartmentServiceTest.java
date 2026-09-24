@@ -150,25 +150,28 @@ class DepartmentServiceTest {
     class DeleteDepartmentTests {
 
         @Test
-        @DisplayName("should delete an existing department")
+        @DisplayName("should archive an existing department")
         void deleteDepartment_Success() {
             UUID id = UUID.randomUUID();
-            when(departmentRepository.existsById(id)).thenReturn(true);
+            Department department = department(id, "Engineering", "Alice", 1111111111L);
+            when(departmentRepository.findById(id)).thenReturn(Optional.of(department));
 
             departmentService.deleteDepartment(id);
 
-            verify(departmentRepository).deleteById(id);
+            assertThat(department.isDeleted()).isTrue();
+            verify(departmentRepository).save(department);
+            verify(departmentRepository, never()).deleteById(any());
         }
 
         @Test
         @DisplayName("should reject unknown id")
         void deleteDepartment_NotFound_ThrowsException() {
             UUID id = UUID.randomUUID();
-            when(departmentRepository.existsById(id)).thenReturn(false);
+            when(departmentRepository.findById(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> departmentService.deleteDepartment(id))
                     .isInstanceOf(ResourceNotFoundException.class);
-            verify(departmentRepository, never()).deleteById(any());
+            verify(departmentRepository, never()).save(any());
         }
     }
 

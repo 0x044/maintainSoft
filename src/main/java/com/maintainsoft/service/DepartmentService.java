@@ -53,10 +53,10 @@ public class DepartmentService {
 
     @Transactional
     public void deleteDepartment(UUID id) {
-        if (!departmentRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Department not found: " + id);
-        }
-        departmentRepository.deleteById(id);
+        Department department = departmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Department not found: " + id));
+        department.setDeleted(true);
+        departmentRepository.save(department);
     }
 
     private void apply(Department department, DepartmentRequest request) {
