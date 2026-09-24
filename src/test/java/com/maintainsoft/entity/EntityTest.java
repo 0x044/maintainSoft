@@ -233,20 +233,22 @@ class EntityTest {
         }
 
         @Test
-        @DisplayName("status should default to OPERATIONAL")
-        void statusDefaultsToOperational() {
+        @DisplayName("status should be unset until assigned")
+        void statusIsUnsetByDefault() {
             Machine machine = new Machine();
 
-            assertThat(machine.getStatus()).isEqualTo(OperationCondition.OPERATIONAL);
+            assertThat(machine.getStatus()).isNull();
         }
 
         @Test
-        @DisplayName("should be able to change status")
-        void canChangeStatus() {
+        @DisplayName("should be able to assign a catalog status")
+        void canAssignStatus() {
             Machine machine = new Machine();
-            machine.setStatus(OperationCondition.UNDER_MAINTENANCE);
+            MachineStatus status = new MachineStatus();
+            status.setName("Under maintenance");
+            machine.setStatus(status);
 
-            assertThat(machine.getStatus()).isEqualTo(OperationCondition.UNDER_MAINTENANCE);
+            assertThat(machine.getStatus()).isSameAs(status);
         }
 
         @Test
@@ -269,12 +271,14 @@ class EntityTest {
         @Test
         @DisplayName("should support all-args constructor")
         void allArgsConstructor() {
+            MachineStatus status = new MachineStatus();
+            status.setName("Decommissioned");
             Machine machine = new Machine("Drill Press", null, "SN-002",
-                    OperationCondition.DECOMMISSIONED, true, 3L);
+                    status, true, 3L);
 
             assertThat(machine.getName()).isEqualTo("Drill Press");
             assertThat(machine.getSerialNumber()).isEqualTo("SN-002");
-            assertThat(machine.getStatus()).isEqualTo(OperationCondition.DECOMMISSIONED);
+            assertThat(machine.getStatus()).isSameAs(status);
             assertThat(machine.isDeleted()).isTrue();
             assertThat(machine.getVersion()).isEqualTo(3L);
         }

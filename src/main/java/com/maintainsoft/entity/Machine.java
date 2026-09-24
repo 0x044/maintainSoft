@@ -1,8 +1,7 @@
 package com.maintainsoft.entity;
 
-import com.maintainsoft.enums.OperationCondition;
-
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,11 +15,12 @@ import lombok.Setter;
 @Table(name = "machines",
         indexes = {
                 @Index(name = "idx_machine_department", columnList = "department_id"),
-                @Index(name = "idx_machine_status", columnList = "status"),
+                @Index(name = "idx_machine_status_id", columnList = "status_id"),
                 @Index(name = "idx_machine_serial", columnList = "serial_number")
         },
         uniqueConstraints = @UniqueConstraint(columnNames = {"serial_number"})
 )
+@SQLRestriction("deleted = false")
 public class Machine extends BaseEntity {
 
   @Column(nullable = false)
@@ -33,9 +33,9 @@ public class Machine extends BaseEntity {
   @Column(name = "serial_number", nullable = false)
   private String serialNumber;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private OperationCondition status = OperationCondition.OPERATIONAL;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "status_id", nullable = false)
+  private MachineStatus status;
 
   @Column(nullable = false)
   private boolean deleted = false;
