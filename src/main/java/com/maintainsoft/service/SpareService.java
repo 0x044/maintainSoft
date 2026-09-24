@@ -144,7 +144,10 @@ public class SpareService {
         Repair repair = getRepair(request.repairId());
         RepairSpare repairSpare = getRepairSpare(request.repairId(), id)
                 .orElseGet(() -> newRepairSpare(repair, spare));
-        repairSpare.setUsedQuantity(repairSpare.getUsedQuantity() + request.quantity());
+        repairSpare.setUsedQuantity(addRepairUsageWithoutOverflow(
+                repairSpare.getUsedQuantity(),
+                request.quantity()
+        ));
         repairSpareRepository.save(repairSpare);
         spare.setStock(spare.getStock() - request.quantity());
         return toResponse(spareRepository.save(spare));
@@ -179,6 +182,14 @@ public class SpareService {
     private void validatePositiveQuantity(int quantity) {
         if (quantity <= 0) {
             throw new InvalidSpareException("Stock quantity must be positive");
+        }
+    }
+
+    private int addRepairUsageWithoutOverflow(int current, int quantity) {
+        try {
+            return Math.addExact(current, quantity);
+        } catch (ArithmeticException exception) {
+            throw new InvalidSpareException("Repair spare usage is too large");
         }
     }
 

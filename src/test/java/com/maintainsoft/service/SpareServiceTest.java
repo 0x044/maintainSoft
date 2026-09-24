@@ -199,6 +199,29 @@ class SpareServiceTest {
     }
 
     @Test
+    void rejectsRepairUsageOverflow() {
+        UUID spareId = UUID.randomUUID();
+        UUID repairId = UUID.randomUUID();
+        Spare spare = spare("Bearing", "BRG-001", 2);
+        spare.setId(spareId);
+        Repair repair = new Repair();
+        repair.setId(repairId);
+        RepairSpare repairSpare = new RepairSpare();
+        repairSpare.getId().setRepairId(repairId);
+        repairSpare.getId().setSpareId(spareId);
+        repairSpare.setUsedQuantity(Integer.MAX_VALUE);
+        when(spareRepository.findByIdForUpdate(spareId)).thenReturn(Optional.of(spare));
+        when(repairRepository.findById(repairId)).thenReturn(Optional.of(repair));
+        when(repairSpareRepository.findById(any())).thenReturn(Optional.of(repairSpare));
+
+        assertThatThrownBy(() -> spareService.issueStock(
+                spareId, new StockIssueRequest(1, repairId)
+        )).isInstanceOf(InvalidSpareException.class);
+
+        verify(repairSpareRepository, never()).save(any());
+    }
+
+    @Test
     void rejectsIssuingMoreThanAvailableStock() {
         UUID spareId = UUID.randomUUID();
         Spare spare = spare("Bearing", "BRG-001", 1);
