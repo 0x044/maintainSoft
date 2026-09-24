@@ -1,7 +1,9 @@
 package com.maintainsoft.controller;
 
+import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.service.RepairService;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,5 +51,31 @@ public class RepairController {
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 repairService.createRepair(request, authentication)
         );
+    }
+
+    @PatchMapping("/{id}")
+    ResponseEntity<RepairResponse> updateRepair(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateRepairRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(repairService.updateRepair(id, request, authentication));
+    }
+
+    @PostMapping("/{id}/claim")
+    ResponseEntity<RepairResponse> claimRepair(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(repairService.claimRepair(id, authentication));
+    }
+
+    @PatchMapping("/{id}/assignment")
+    ResponseEntity<RepairResponse> assignRepair(
+            @PathVariable UUID id,
+            @RequestBody AssignRepairRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(repairService.assignRepair(id, request, authentication));
     }
 }

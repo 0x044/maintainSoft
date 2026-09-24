@@ -1,13 +1,17 @@
 package com.maintainsoft.service;
 
+import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.entity.Machine;
 import com.maintainsoft.entity.Repair;
 import com.maintainsoft.entity.User;
 import com.maintainsoft.enums.RepairPriority;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.enums.RepairType;
+import com.maintainsoft.enums.Role;
+import com.maintainsoft.exception.RepairConflictException;
 import com.maintainsoft.exception.RepairForbiddenException;
 import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.MachineRepository;
@@ -158,6 +162,116 @@ class RepairServiceTest {
                 request(machine.getId(), RepairType.BREAKDOWN, "breakdown-3"),
                 authentication("reporter@example.com", "ROLE_REPORTER")
         )).isInstanceOf(com.maintainsoft.exception.DuplicateRepairException.class);
+    }
+
+    @Test
+    void managerAssignsRepairToSupervisor() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setRole(Role.SUPERVISOR);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(userRepository.findById(supervisor.getId())).thenReturn(Optional.of(supervisor));
+        when(repairRepository.saveAndFlush(repair)).thenReturn(repair);
+
+        RepairResponse response = repairService.assignRepair(
+                repair.getId(),
+                new AssignRepairRequest(supervisor.getId()),
+                authentication("manager@example.com", "ROLE_MANAGER")
+        );
+
+        assertThat(response.assignedSupervisorId()).isEqualTo(supervisor.getId());
+    }
+
+    @Test
+    void managerCanTemporarilyUnassignRepair() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setId(UUID.randomUUID());
+        supervisor.setRole(Role.SUPERVISOR);
+        repair.setAssignedSupervisor(supervisor);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(repairRepository.saveAndFlush(repair)).thenReturn(repair);
+
+        RepairResponse response = repairService.assignRepair(
+                repair.getId(),
+                new AssignRepairRequest(null),
+                authentication("manager@example.com", "ROLE_MANAGER")
+        );
+
+        assertThat(response.assignedSupervisorId()).isNull();
+    }
+
+    @Test
+    void supervisorClaimsUnassignedRepair() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setRole(Role.SUPERVISOR);
+        when(userRepository.findByEmail("supervisor@example.com")).thenReturn(Optional.of(supervisor));
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(repairRepository.saveAndFlush(repair)).thenReturn(repair);
+
+        RepairResponse response = repairService.claimRepair(
+                repair.getId(),
+                authentication("supervisor@example.com", "ROLE_SUPERVISOR")
+        );
+
+        assertThat(response.assignedSupervisorId()).isEqualTo(supervisor.getId());
+    }
+
+    @Test
+    void rejectsClaimWhenRepairIsAssignedToAnotherSupervisor() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User other = user("other@example.com", "Other");
+        other.setRole(Role.SUPERVISOR);
+        repair.setAssignedSupervisor(other);
+        User currentSupervisor = user("supervisor@example.com", "Ravi");
+        currentSupervisor.setRole(Role.SUPERVISOR);
+        when(userRepository.findByEmail("supervisor@example.com"))
+                .thenReturn(Optional.of(currentSupervisor));
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+
+        assertThatThrownBy(() -> repairService.claimRepair(
+                repair.getId(),
+                authentication("supervisor@example.com", "ROLE_SUPERVISOR")
+        )).isInstanceOf(RepairConflictException.class);
+    }
+
+    @Test
+    void updatesRepairMasterData() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(repairRepository.saveAndFlush(repair)).thenReturn(repair);
+        Instant newStart = Instant.parse("2026-09-25T04:00:00Z");
+
+        RepairResponse response = repairService.updateRepair(
+                repair.getId(),
+                new UpdateRepairRequest(
+                        "Updated description",
+                        RepairPriority.LOW,
+                        "New Technician",
+                        "+91-9111111111",
+                        newStart
+                ),
+                authentication("manager@example.com", "ROLE_MANAGER")
+        );
+
+        assertThat(response.description()).isEqualTo("Updated description");
+        assertThat(response.priority()).isEqualTo(RepairPriority.LOW);
+        assertThat(response.externalTechnicianName()).isEqualTo("New Technician");
+        assertThat(response.startDate()).isEqualTo(newStart);
+    }
+
+    @Test
+    void rejectsRepairManagementForUnprivilegedUser() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+
+        assertThatThrownBy(() -> repairService.updateRepair(
+                repair.getId(),
+                new UpdateRepairRequest("Changed", null, null, null, null),
+                authentication("reporter@example.com", "ROLE_REPORTER")
+        )).isInstanceOf(RepairForbiddenException.class);
+
+        verify(repairRepository, never()).findById(any());
     }
 
     private CreateRepairRequest request(UUID machineId, RepairType type, String key) {

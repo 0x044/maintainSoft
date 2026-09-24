@@ -118,4 +118,11 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(403, "Forbidden", e.getMessage(), Instant.now())
         );
     }
+
+    @ExceptionHandler(RepairConflictException.class)
+    ResponseEntity<ErrorResponse> handleRepairConflict(RepairConflictException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now())
+        );
+    }
 }

@@ -1,7 +1,9 @@
 package com.maintainsoft.controller;
 
+import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.enums.RepairPriority;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.enums.RepairType;
@@ -68,6 +70,46 @@ class RepairControllerTest {
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         verify(repairService).createRepair(request, authentication);
+    }
+
+    @Test
+    void updateRepairReturnsOk() {
+        UUID id = UUID.randomUUID();
+        UpdateRepairRequest request = new UpdateRepairRequest(
+                "Updated", RepairPriority.LOW, "Technician", "+91-9000000001", null
+        );
+        Authentication authentication = authentication();
+        when(repairService.updateRepair(id, request, authentication)).thenReturn(response());
+
+        ResponseEntity<RepairResponse> result = repairController.updateRepair(id, request, authentication);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(repairService).updateRepair(id, request, authentication);
+    }
+
+    @Test
+    void claimRepairReturnsOk() {
+        UUID id = UUID.randomUUID();
+        Authentication authentication = authentication();
+        when(repairService.claimRepair(id, authentication)).thenReturn(response());
+
+        ResponseEntity<RepairResponse> result = repairController.claimRepair(id, authentication);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(repairService).claimRepair(id, authentication);
+    }
+
+    @Test
+    void assignRepairReturnsOk() {
+        UUID id = UUID.randomUUID();
+        AssignRepairRequest request = new AssignRepairRequest(UUID.randomUUID());
+        Authentication authentication = authentication();
+        when(repairService.assignRepair(id, request, authentication)).thenReturn(response());
+
+        ResponseEntity<RepairResponse> result = repairController.assignRepair(id, request, authentication);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(repairService).assignRepair(id, request, authentication);
     }
 
     private CreateRepairRequest request() {

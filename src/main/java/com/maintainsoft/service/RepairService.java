@@ -1,7 +1,9 @@
 package com.maintainsoft.service;
 
+import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.entity.Machine;
 import com.maintainsoft.entity.Repair;
 import com.maintainsoft.entity.User;
@@ -11,6 +13,7 @@ import com.maintainsoft.enums.RepairType;
 import com.maintainsoft.enums.Role;
 import com.maintainsoft.exception.DuplicateRepairException;
 import com.maintainsoft.exception.InvalidRepairException;
+import com.maintainsoft.exception.RepairConflictException;
 import com.maintainsoft.exception.RepairForbiddenException;
 import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.MachineRepository;
@@ -93,6 +96,98 @@ public class RepairService {
             return toResponse(repairRepository.saveAndFlush(repair));
         } catch (DataIntegrityViolationException exception) {
             throw new DuplicateRepairException("Repair idempotency key already exists");
+        }
+    }
+
+    @Transactional
+    public RepairResponse updateRepair(UUID id, UpdateRepairRequest request, Authentication authentication) {
+        ensureCanManage(authentication);
+        Repair repair = findRepair(id);
+
+        if (request.description() != null) {
+            repair.setDescription(request.description());
+        }
+        if (request.repairPriority() != null) {
+            repair.setRepairPriority(request.repairPriority());
+        }
+        if (request.externalTechnicianName() != null) {
+            repair.setExternalTechnicianName(request.externalTechnicianName());
+        }
+        if (request.externalTechnicianPhone() != null) {
+            repair.setExternalTechnicianPhone(request.externalTechnicianPhone());
+        }
+        if (request.startDate() != null) {
+            repair.setStartDate(request.startDate());
+        }
+
+        return toResponse(repairRepository.saveAndFlush(repair));
+    }
+
+    @Transactional
+    public RepairResponse claimRepair(UUID id, Authentication authentication) {
+        ensureSupervisor(authentication);
+        User supervisor = currentUser(authentication);
+        if (supervisor.getRole() != Role.SUPERVISOR) {
+            throw new RepairForbiddenException("Only supervisors can claim repairs");
+        }
+
+        Repair repair = findRepair(id);
+        User assignedSupervisor = repair.getAssignedSupervisor();
+        if (assignedSupervisor != null) {
+            if (assignedSupervisor.getId().equals(supervisor.getId())) {
+                return toResponse(repair);
+            }
+            throw new RepairConflictException("Repair is already assigned to another supervisor");
+        }
+
+        repair.setAssignedSupervisor(supervisor);
+        return toResponse(repairRepository.saveAndFlush(repair));
+    }
+
+    @Transactional
+    public RepairResponse assignRepair(UUID id, AssignRepairRequest request, Authentication authentication) {
+        ensureManager(authentication);
+        Repair repair = findRepair(id);
+
+        if (request.assignedSupervisorId() == null) {
+            repair.setAssignedSupervisor(null);
+        } else {
+            User supervisor = userRepository.findById(request.assignedSupervisorId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Supervisor not found: " + request.assignedSupervisorId()
+                    ));
+            if (supervisor.getRole() != Role.SUPERVISOR) {
+                throw new InvalidRepairException("Repair can only be assigned to a supervisor");
+            }
+            repair.setAssignedSupervisor(supervisor);
+        }
+
+        return toResponse(repairRepository.saveAndFlush(repair));
+    }
+
+    private Repair findRepair(UUID id) {
+        return repairRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Repair not found: " + id));
+    }
+
+    private void ensureCanManage(Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null
+                || !hasAnyRole(authentication, Role.MANAGER, Role.SUPERVISOR)) {
+            throw new RepairForbiddenException("Only managers and supervisors can manage repairs");
+        }
+    }
+
+    private void ensureSupervisor(Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null
+                || !hasRole(authentication, Role.SUPERVISOR)) {
+            throw new RepairForbiddenException("Only supervisors can claim repairs");
+        }
+    }
+
+    private void ensureManager(Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null
+                || !hasRole(authentication, Role.MANAGER)) {
+            throw new RepairForbiddenException("Only managers can assign repairs");
         }
     }
 
