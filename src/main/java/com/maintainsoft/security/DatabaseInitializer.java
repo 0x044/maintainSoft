@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -24,24 +25,45 @@ public class DatabaseInitializer implements CommandLineRunner {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Value("${app.bootstrap.department-name}")
+    private String departmentName;
+
+    @Value("${app.bootstrap.poc-name}")
+    private String pocName;
+
+    @Value("${app.bootstrap.poc-number}")
+    private long pocNumber;
+
+    @Value("${app.bootstrap.manager-name}")
+    private String managerName;
+
+    @Value("${app.bootstrap.manager-email}")
+    private String managerEmail;
+
+    @Value("${app.bootstrap.manager-phone}")
+    private String managerPhone;
+
+    @Value("${app.bootstrap.manager-password}")
+    private String managerPassword;
+
     @Override
     public void run(String @NonNull ... args) {
         if (userRepository.count() == 0) {
             log.info("Initializing Database");
 
             Department department = new Department();
-            department.setDeptName("Administration");
-            department.setPocName("Balasubramanian");
-            department.setPocNumber(9842205227L);
+            department.setDeptName(departmentName);
+            department.setPocName(pocName);
+            department.setPocNumber(pocNumber);
             departmentRepository.save(department);
 
             User user = new User();
             user.setDepartment(department);
-            user.setName("Balasubramanian");
-            user.setEmail("balu@softex.com");
-            user.setPhone("9842205227");
+            user.setName(managerName);
+            user.setEmail(managerEmail);
+            user.setPhone(managerPhone);
             user.setRole(Role.MANAGER);
-            user.setPassword(passwordEncoder.encode("password"));
+            user.setPassword(passwordEncoder.encode(managerPassword));
             userRepository.save(user);
             log.info("DB Populated");
         }
