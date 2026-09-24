@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `77d3232`, verified 2026-09-24.
+> **Source baseline:** commit `d6e3608`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -63,7 +63,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 241 tests passed
+Result: BUILD SUCCESS — 242 tests passed
 ```
 
 Flyway validated and applied V1–V4, Hibernate initialized against PostgreSQL 18.6, and
@@ -88,8 +88,8 @@ Additional tooling findings:
   POM configures the Maven plugin as `12.0.0`. The plugin has no repository-provided
   datasource configuration, and `flyway.conf` is empty. Align or remove the plugin
   before relying on CLI migration commands.
-- Hibernate reports that `RepairSpare$RepairSpareId` does not override `equals()`; fix
-  the composite-key mapping before relying on entity identity in collections.
+- The composite key warning for `RepairSpareId` is resolved; keep equality/hash-code
+  behavior covered as the repair-spare model evolves.
 
 ### Confirmed product brief
 
@@ -441,7 +441,7 @@ The current 203-test inventory overstates behavioral coverage. Add:
 - [ ] Remove `REMOVE` from the `RepairUpdate` cascade (not only orphan removal),
       prohibit repair-history deletion or define archival semantics, and expose only an
       append operation.
-- [ ] Add `equals`/`hashCode` to `RepairSpareId`.
+- [x] Add `equals`/`hashCode` to `RepairSpareId`.
 - [ ] Separate `Spare.lastPurchaseDate` from general update auditing, even though full
       purchase history is deferred.
 - [ ] Add database checks for stock, repair-spare quantities, roles, and repair date
