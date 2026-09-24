@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/users", "/api/v1/machine-statuses").hasRole("MANAGER")
                         .requestMatchers("/api/v1/machines/**", "/api/v1/spares/**")
                         .hasAnyRole("MANAGER", "SUPERVISOR")
+                        .requestMatchers("/api/v1/repairs/**").authenticated()
                         .anyRequest().authenticated()
                 ).csrf(CsrfConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt((jwt) -> jwt

@@ -97,4 +97,25 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(400, "Bad Request", e.getMessage(), Instant.now())
         );
     }
+
+    @ExceptionHandler(DuplicateRepairException.class)
+    ResponseEntity<ErrorResponse> handleDuplicateRepair(DuplicateRepairException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now())
+        );
+    }
+
+    @ExceptionHandler(InvalidRepairException.class)
+    ResponseEntity<ErrorResponse> handleInvalidRepair(InvalidRepairException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request", e.getMessage(), Instant.now())
+        );
+    }
+
+    @ExceptionHandler(RepairForbiddenException.class)
+    ResponseEntity<ErrorResponse> handleRepairForbidden(RepairForbiddenException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                new ErrorResponse(403, "Forbidden", e.getMessage(), Instant.now())
+        );
+    }
 }

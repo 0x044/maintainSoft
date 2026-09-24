@@ -16,4 +16,9 @@ public interface RepairRepository extends JpaRepository<Repair, UUID> {
     List<Repair> findByRepairStatusOrderByCreatedAtDesc(RepairStatus repairStatus);
 
     List<Repair> findByMachine_IdOrderByCreatedAtDesc(UUID machineId);
+
+    List<Repair> findByRepairStatusAndMachine_IdOrderByCreatedAtDesc(
+            RepairStatus repairStatus,
+            UUID machineId
+    );
 }
