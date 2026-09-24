@@ -55,12 +55,47 @@ class JwtDecoderConfigTest {
                 .isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
     }
 
-    private String token(String type) {
+    @Test
+    void decoderRejectsWrongIssuer() {
+        JwtDecoder decoder = securityConfig.accessJwtDecoder();
+        String token = tokenWithIssuer("access", "https://wrong.example.com", Instant.now());
+
+        assertThatThrownBy(() -> decoder.decode(token))
+                .isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
+    }
+
+    @Test
+    void decoderRejectsExpiredToken() {
+        JwtDecoder decoder = securityConfig.accessJwtDecoder();
         Instant now = Instant.now();
+        String token = tokenWithIssuer("access", JwtService.JWT_ISSUER, now.minus(10, ChronoUnit.MINUTES));
+
+        assertThatThrownBy(() -> decoder.decode(token))
+                .isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
+    }
+
+    @Test
+    void decoderRejectsTamperedSignature() {
+        JwtDecoder decoder = securityConfig.accessJwtDecoder();
+        String token = token("access");
+        int signatureStart = token.lastIndexOf('.') + 1;
+        char replacement = token.charAt(signatureStart) == 'A' ? 'B' : 'A';
+        String tampered = token.substring(0, signatureStart) + replacement
+                + token.substring(signatureStart + 1);
+
+        assertThatThrownBy(() -> decoder.decode(tampered))
+                .isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
+    }
+
+    private String token(String type) {
+        return tokenWithIssuer(type, JwtService.JWT_ISSUER, Instant.now());
+    }
+
+    private String tokenWithIssuer(String type, String issuer, Instant issuedAt) {
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(JwtService.JWT_ISSUER)
-                .issuedAt(now)
-                .expiresAt(now.plus(5, ChronoUnit.MINUTES))
+                .issuer(issuer)
+                .issuedAt(issuedAt)
+                .expiresAt(issuedAt.plus(5, ChronoUnit.MINUTES))
                 .subject("user@example.com")
                 .claim("type", type)
                 .build();
