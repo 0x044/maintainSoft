@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `8eef437`, verified 2026-09-24.
+> **Source baseline:** commit `7d279cf`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -33,7 +33,7 @@ The most urgent facts are:
 - The default full context test still passes against the authorized test PostgreSQL
   database and can mutate it; an opt-in disposable-database profile is available, but
   hermetic default isolation is still open.
-- The current source compiles on Java 26 and 327 tests pass (one opt-in isolated-profile
+- The current source compiles on Java 26 and 329 tests pass (one opt-in isolated-profile
   test is skipped without disposable database variables), but MVC/security and
   concurrency coverage remain incomplete.
 
@@ -67,7 +67,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 327 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 329 tests passed, 1 opt-in test skipped
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -438,7 +438,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 327-test inventory still overstates behavioral coverage. Add:
+The current 329-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -498,7 +498,7 @@ The current 327-test inventory still overstates behavioral coverage. Add:
       stored version.
 - [ ] Decide where `@Version` belongs and ensure history entities have the intended
       concurrency behavior.
-- [ ] Fix `AuditorAware` handling of anonymous authentication so unauthenticated
+- [x] Fix `AuditorAware` handling of anonymous authentication so unauthenticated
       operations do not silently become `anonymousUser`.
 
 ## 6. Feature Delivery Plan
