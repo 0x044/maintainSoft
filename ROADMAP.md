@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `58910d8`, verified 2026-09-24.
+> **Source baseline:** commit `5add8c2`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -33,7 +33,7 @@ The most urgent facts are:
 - The default full context test still passes against the authorized test PostgreSQL
   database and can mutate it; an opt-in disposable-database profile is available, but
   hermetic default isolation is still open.
-- The current source compiles on Java 26 and 325 tests pass (one opt-in isolated-profile
+- The current source compiles on Java 26 and 327 tests pass (one opt-in isolated-profile
   test is skipped without disposable database variables), but MVC/security and
   concurrency coverage remain incomplete.
 
@@ -67,7 +67,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 325 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 327 tests passed, 1 opt-in test skipped
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -365,9 +365,9 @@ covered by HTTP security tests.
 #### P1.1 Enforce an explicit role matrix
 
 **Finding:** URL-level authorization now protects manager-only user/status routes,
-manager/supervisor machine and stock routes, and the role-specific repair mutation
-boundaries. Method-level authorization is not enabled, and the complete role matrix is
-not yet covered by HTTP tests.
+manager/supervisor machine and stock mutations, and the role-specific repair mutation
+boundaries; authenticated users can read business records. Method-level authorization is
+not enabled, and the complete role matrix is not yet covered by HTTP tests.
 
 - [x] Implement the initial confirmed role matrix for the user route: managers and
       supervisors share business operations; manager-only actions cover user management.
@@ -438,7 +438,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 325-test inventory still overstates behavioral coverage. Add:
+The current 327-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
