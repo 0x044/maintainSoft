@@ -2,6 +2,7 @@ package com.maintainsoft.controller;
 
 import com.maintainsoft.dto.AuthResponse;
 import com.maintainsoft.dto.LoginRequest;
+import com.maintainsoft.dto.LogoutRequest;
 import com.maintainsoft.dto.RefreshRequest;
 import com.maintainsoft.service.AuthService;
 import org.junit.jupiter.api.DisplayName;
@@ -152,5 +153,16 @@ class AuthControllerTest {
                     () -> authController.refresh(request));
             verify(authService).refresh(request);
         }
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/logout returns 204")
+    void logoutReturnsNoContent() {
+        LogoutRequest request = new LogoutRequest("refresh-token");
+
+        ResponseEntity<Void> result = authController.logout(request);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        verify(authService).logout(request);
     }
 }

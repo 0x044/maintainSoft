@@ -1,11 +1,13 @@
 package com.maintainsoft.security;
 
+import com.maintainsoft.controller.AuthController;
 import com.maintainsoft.controller.MachineController;
 import com.maintainsoft.controller.RepairController;
 import com.maintainsoft.controller.UserController;
 import com.maintainsoft.dto.CreateUserRequest;
 import com.maintainsoft.dto.UserResponse;
 import com.maintainsoft.enums.Role;
+import com.maintainsoft.service.AuthService;
 import com.maintainsoft.service.MachineService;
 import com.maintainsoft.service.RepairService;
 import com.maintainsoft.service.UserManagementService;
@@ -41,6 +43,9 @@ class SecurityHttpTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private AuthService authService;
 
     @MockitoBean
     private UserManagementService userManagementService;
@@ -123,6 +128,23 @@ class SecurityHttpTest {
         verifyNoInteractions(repairService);
     }
 
+    @Test
+    void unauthenticatedLogoutIsRejected() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"refresh-token\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedLogoutReturnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_REPORTER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"refresh-token\"}"))
+                .andExpect(status().isNoContent());
+    }
+
     private String validUserJson() {
         return """
                 {
@@ -141,7 +163,7 @@ class SecurityHttpTest {
             DataJpaRepositoriesAutoConfiguration.class,
             HibernateJpaAutoConfiguration.class
     })
-    @Import({SecurityConfig.class, UserController.class, MachineController.class, RepairController.class})
+    @Import({SecurityConfig.class, AuthController.class, UserController.class, MachineController.class, RepairController.class})
     static class TestApplication {
     }
 }

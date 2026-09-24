@@ -171,6 +171,7 @@ class JwtServiceTest {
             assertThat(claims.getSubject()).isEqualTo(TEST_EMAIL);
             assertThat(claims.getIssuer().toString()).isEqualTo("https://msi.leo-blenny.ts.net");
             assertThat(claims.<String>getClaim("type")).isEqualTo("refresh");
+            assertThat(claims.getId()).isNotBlank();
             // Refresh token should NOT contain scope
             assertThat(claims.<String>getClaim("scope")).isNull();
         }

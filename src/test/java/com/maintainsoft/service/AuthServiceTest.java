@@ -2,6 +2,7 @@ package com.maintainsoft.service;
 
 import com.maintainsoft.dto.AuthResponse;
 import com.maintainsoft.dto.LoginRequest;
+import com.maintainsoft.dto.LogoutRequest;
 import com.maintainsoft.dto.RefreshRequest;
 import com.maintainsoft.entity.User;
 import com.maintainsoft.enums.Role;
@@ -43,6 +44,9 @@ class AuthServiceTest {
 
     @Mock
     private UserDetailsService userDetailsService;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private AuthService authService;
@@ -86,6 +90,8 @@ class AuthServiceTest {
 
             when(jwtService.generateAccessToken(mockUserDetails)).thenReturn(ACCESS_TOKEN);
             when(jwtService.generateRefreshToken(mockUserDetails)).thenReturn(REFRESH_TOKEN);
+            when(jwtService.validateRefreshToken(REFRESH_TOKEN))
+                    .thenReturn(refreshJwt("login-jti"));
 
             // Act
             AuthResponse response = authService.login(request);
@@ -105,6 +111,7 @@ class AuthServiceTest {
             UsernamePasswordAuthenticationToken capturedAuth = authCaptor.getValue();
             assertThat(capturedAuth.getPrincipal()).isEqualTo(TEST_EMAIL);
             assertThat(capturedAuth.getCredentials()).isEqualTo(TEST_PASSWORD);
+            verify(refreshTokenService).issue(any(User.class), eq(REFRESH_TOKEN), any(Jwt.class));
         }
     }
 
@@ -122,7 +129,10 @@ class AuthServiceTest {
             Jwt mockJwt = Jwt.withTokenValue(oldRefreshToken)
                     .header("alg", "RS256")
                     .claim("type", "refresh")
+                    .claim("jti", "old-jti")
                     .subject(TEST_EMAIL)
+                    .issuedAt(java.time.Instant.now())
+                    .expiresAt(java.time.Instant.now().plusSeconds(3600))
                     .build();
 
             when(jwtService.validateRefreshToken(oldRefreshToken)).thenReturn(mockJwt);
@@ -135,6 +145,8 @@ class AuthServiceTest {
 
             when(jwtService.generateAccessToken(mockUserDetails)).thenReturn(ACCESS_TOKEN);
             when(jwtService.generateRefreshToken(mockUserDetails)).thenReturn(REFRESH_TOKEN);
+            when(jwtService.validateRefreshToken(REFRESH_TOKEN))
+                    .thenReturn(refreshJwt("new-jti"));
 
             // Act
             AuthResponse response = authService.refresh(request);
@@ -148,6 +160,31 @@ class AuthServiceTest {
 
             verify(jwtService).validateRefreshToken(oldRefreshToken);
             verify(userDetailsService).loadUserByUsername(TEST_EMAIL);
+            verify(refreshTokenService).rotate(
+                    eq(user), eq(oldRefreshToken), eq(mockJwt), eq(REFRESH_TOKEN), any(Jwt.class)
+            );
         }
+    }
+
+    private Jwt refreshJwt(String jti) {
+        return Jwt.withTokenValue(REFRESH_TOKEN)
+                .header("alg", "RS256")
+                .claim("type", "refresh")
+                .claim("jti", jti)
+                .subject(TEST_EMAIL)
+                .issuedAt(java.time.Instant.now())
+                .expiresAt(java.time.Instant.now().plusSeconds(604800))
+                .build();
+    }
+
+    @Test
+    void logoutRevokesRefreshToken() {
+        String token = "refresh-token";
+        Jwt jwt = refreshJwt("logout-jti");
+        when(jwtService.validateRefreshToken(token)).thenReturn(jwt);
+
+        authService.logout(new LogoutRequest(token));
+
+        verify(refreshTokenService).revoke(token, jwt);
     }
 }

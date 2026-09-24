@@ -3,6 +3,7 @@ package com.maintainsoft.controller;
 import com.maintainsoft.dto.AuthResponse;
 import jakarta.validation.Valid;
 import com.maintainsoft.dto.LoginRequest;
+import com.maintainsoft.dto.LogoutRequest;
 import com.maintainsoft.dto.RefreshRequest;
 import com.maintainsoft.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -25,5 +26,11 @@ public class AuthController {
     ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest refreshRequest) {
         AuthResponse response = authService.refresh(refreshRequest);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest logoutRequest) {
+        authService.logout(logoutRequest);
+        return ResponseEntity.noContent().build();
     }
 }
