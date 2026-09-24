@@ -18,6 +18,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     @Query("select token from RefreshToken token where token.jti = :jti")
     Optional<RefreshToken> findByJtiForUpdate(@Param("jti") String jti);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<RefreshToken> findByFamilyIdAndRevokedAtIsNull(UUID familyId);
 
     List<RefreshToken> findByUser_IdAndRevokedAtIsNull(UUID userId);
