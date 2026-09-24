@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -37,5 +38,22 @@ public class RepairSpare {
     public static class RepairSpareId implements Serializable {
         private UUID repairId;
         private UUID spareId;
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof RepairSpareId that)) {
+                return false;
+            }
+            return Objects.equals(repairId, that.repairId)
+                    && Objects.equals(spareId, that.spareId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(repairId, spareId);
+        }
     }
 }
