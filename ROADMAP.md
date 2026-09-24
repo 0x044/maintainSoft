@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `84c91aa`, verified 2026-09-24.
+> **Source baseline:** commit `cf41a27`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -77,8 +77,9 @@ accessor/record tests, direct controller/exception-handler invocations, and focu
 security/validation tests.
 
 The default context test still inherits the configured external datasource and can
-execute `DatabaseInitializer`; the opt-in `test` profile disables seeding and accepts a
-disposable datasource, while a hermetic Testcontainers/default workflow remains open.
+mutate that database; bootstrap seeding is disabled by default, while the opt-in `test`
+profile accepts a disposable datasource. A hermetic Testcontainers/default workflow
+remains open.
 
 Additional tooling findings:
 
@@ -258,7 +259,7 @@ question below explicitly says otherwise.
 - `RefreshTokenService` and `RefreshTokenRepository` store only SHA-256 hashes, rotate
   token families under a pessimistic lock, and revoke replays.
 - The legacy `Technician` entity remains dormant; repairs use free-text technician fields.
-- There is no password lifecycle or refresh-token cleanup job.
+- There is no password lifecycle; expired refresh-token cleanup is implemented.
 
 ### Configuration and schema
 
@@ -317,12 +318,14 @@ being protected.
 
 #### P0.2 Remove predictable bootstrap credentials
 
-**Finding:** `DatabaseInitializer` creates a manager when the user table is empty using
+**Finding:** `DatabaseInitializer` is now disabled by default and runs only when
+`app.bootstrap.enabled=true`; if explicitly enabled, it still creates a manager using
 hard-coded identity and password values.
 
 **Tasks:**
 
-- [ ] Disable automatic production seeding or make it profile-controlled.
+- [x] Disable automatic production seeding; it is now opt-in via
+      `app.bootstrap.enabled=true`.
 - [ ] Use a one-time, externally supplied bootstrap secret or an explicit operator
       command.
 - [ ] Rotate any previously seeded manager credentials in existing deployments.
@@ -408,11 +411,11 @@ rotation remain open.
 #### P1.5 Isolate the test environment
 
 **Finding:** the default full context test still passes against the authorized test
-database and V1–V8 are verified there, so it can still mutate that database. An opt-in
-`test` profile now accepts `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME`, and
-`TEST_DATABASE_PASSWORD`, disables bootstrap seeding, and runs the same migration/context
-check against a caller-provided disposable database. A hermetic default/Testcontainers
-workflow is still required.
+database and V1–V8 are verified there, so it can still mutate that database. Bootstrap
+seeding is disabled by default; an opt-in `test` profile accepts `TEST_DATABASE_URL`,
+`TEST_DATABASE_USERNAME`, and `TEST_DATABASE_PASSWORD`, and runs the same
+migration/context check against a caller-provided disposable database. A hermetic
+default/Testcontainers workflow is still required.
 
 - [x] Add an opt-in test profile and test-only datasource configuration.
 - [ ] Use Testcontainers PostgreSQL or a deliberately disposable local database.
