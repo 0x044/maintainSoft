@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `444ae82`, verified 2026-09-23.
+> **Source baseline:** commit `d86837d`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -60,10 +60,10 @@ The following checks were run with Java 26:
 
 ```text
 mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
-Result: BUILD SUCCESS — 220 tests passed
+Result: BUILD SUCCESS — 226 tests passed
 ```
 
-A test-skipping package build also succeeds. The 220 passing tests are mostly
+A test-skipping package build also succeeds. The 226 passing tests are mostly
 Mockito unit tests, accessor/record tests, direct controller/exception-handler
 invocations, and focused security/validation tests.
 
@@ -109,8 +109,9 @@ implementation slices:
   Machines, and Spare Parts, including inventory operations and repair integration. No
   web UI is included in this milestone.
 - **Machines:** asset identity, equipment details, placement, lifecycle, and maintenance
-  metrics are in scope. Built-in statuses plus manager-created custom statuses with
-  names and colors are required.
+  metrics are in scope. The status catalog uses five built-in statuses with the agreed
+  green/gray/amber/red/slate palette, manager-created custom names/colors, duplicate
+  custom names, and UUID-based API references.
 - **Inventory:** strict non-negative stock with receive, issue, adjust, and return
   operations. The first version keeps only the current balance; it does not require or
   retain operation reasons or keep a full stock ledger. Parts issued to repairs must be
@@ -165,9 +166,11 @@ question below explicitly says otherwise.
    manual communication. A technician directory, login, or vendor workflow is deferred.
 5. **First milestone:** API-only Departments, Machines, and Spare Parts master data,
    with inventory operations and repair integration. No web UI is included yet.
-6. **Machine state:** built-in statuses plus manager-created custom statuses with names
-   and colors. Repair lifecycle events may set default status values; a later manual
-   change may override the automatic result.
+6. **Machine state:** the additive V2 status catalog is implemented with five built-in
+   statuses, manager-created custom names/colors, duplicate custom names, and UUID API
+   references. Machines still use the legacy enum until the next migration. Repair
+   lifecycle events may set default status values; a later manual change may override
+   the automatic result.
 7. **Repair lifecycle:** scheduled and breakdown repairs use `OPEN`, `IN_PROGRESS`, and
    `COMPLETED`. Managers and supervisors can create scheduled repairs; any authenticated
    user can report a breakdown.
@@ -199,6 +202,8 @@ question below explicitly says otherwise.
 | `POST /api/v1/auth/login` | Database-backed BCrypt authentication; returns tokens | Implemented |
 | `POST /api/v1/auth/refresh` | Refresh-only decoder issues a new pair | Incomplete: no rotation/revocation |
 | `POST /api/v1/users` | Manager-only; creates a `SUPERVISOR` account | Implemented, initial slice |
+| `GET /api/v1/machine-statuses` | Lists built-in and active custom statuses | Implemented |
+| `POST /api/v1/machine-statuses` | Manager-only; creates a custom status | Implemented, creation-only |
 | `GET /api/v1/health` | Authenticated principal echo, not a real health check | Implemented |
 | `GET /api/v1/departments` | Lists active departments | Implemented |
 | `POST /api/v1/departments` | Creates a department with DB-backed duplicate handling | Implemented |
@@ -212,6 +217,7 @@ question below explicitly says otherwise.
 - `UserRepository` and `DepartmentRepository` are used.
 - `UserManagementService` and `UserController` provide the initial manager-only
   supervisor invitation path.
+- `MachineStatusService` and `MachineStatusController` provide the V2 status catalog.
 - `MachineRepository` and `SpareRepository` are currently dormant.
 - There are no technician, machine, spare, repair, repair-update, or repair-spare
   services/controllers.
@@ -222,7 +228,9 @@ question below explicitly says otherwise.
 - `spring.flyway.enabled=true` and `spring.jpa.hibernate.ddl-auto=validate` are now
   active.
 - `V1__init_schema.sql` has been reduced to one table/index/constraint block.
-- The migration has not been proven against a disposable empty PostgreSQL database.
+- V2 adds an additive `machine_statuses` catalog and seeds the five built-in statuses;
+  it does not yet change the legacy `machines.status` column.
+- The migrations have not been proven against a disposable empty PostgreSQL database.
 - V1 was changed in the latest commit; environments that applied an earlier checksum
   may require an explicit repair/baseline procedure.
 - The schema lacks important invariants for nonnegative stock, positive spare usage,
@@ -407,8 +415,10 @@ The current 203-test inventory overstates behavioral coverage. Add:
 - [ ] Decide whether deleted `User`, `Department`, and `Spare` rows may be recreated;
       current unique constraints prevent reuse even when repository queries hide those
       deleted rows. Handle `Machine` separately after its soft-delete behavior is fixed.
-- [ ] Replace the fixed machine-status enum/check constraint with a manager-managed
-      status catalog supporting built-in statuses plus custom names and colors.
+- [x] Add the manager-managed status catalog with built-in statuses, custom
+      names/colors, duplicate custom names, and UUID API references.
+- [ ] Link `Machine` records to the catalog in a later migration and replace the
+      legacy enum/check constraint.
 - [ ] Implement the confirmed current-balance inventory model: receive, issue, adjust,
       and return without a required reason, with nonnegative stock and repair links for
       issued parts; do not add a full ledger in this milestone.
@@ -467,8 +477,9 @@ This is the first business milestone.
   is append-only, and the flow is covered by isolated tests.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
-role mapping, token-purpose separation, and CORS are implemented. Machine, spare,
-repair, custom-status, and full HTTP security integration tests remain open.
+role mapping, token-purpose separation, CORS, and the V2 machine-status catalog are
+implemented. Machine linkage, spare, repair, and full HTTP security integration tests
+remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
@@ -569,8 +580,10 @@ P0.1 is closed; do not distribute the resulting JAR.
 7. Where is the missing `DESIGN.md`, if it still exists?
 8. Can archived master records be restored, and should archived identifiers ever be
    reused after the first version?
-9. Should Java 26 remain the required target, or should the project move to a supported
-   LTS toolchain?
+9. Can custom machine statuses be edited or archived after creation, or remain
+   creation-only for the first milestone?
+10. Should Java 26 remain the required target, or should the project move to a supported
+    LTS toolchain?
 
 ## 10. Definition of Ready for Feature Development
 
