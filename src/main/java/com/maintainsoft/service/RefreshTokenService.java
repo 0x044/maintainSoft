@@ -5,6 +5,7 @@ import com.maintainsoft.entity.User;
 import com.maintainsoft.exception.InvalidTokenException;
 import com.maintainsoft.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,12 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
+
+    @Scheduled(cron = "${app.refresh-token.cleanup-cron:0 0 * * * *}")
+    @Transactional
+    public void cleanupExpiredTokens() {
+        refreshTokenRepository.deleteByExpiresAtBefore(Instant.now());
+    }
 
     @Transactional
     public void issue(User user, String rawToken, Jwt jwt) {

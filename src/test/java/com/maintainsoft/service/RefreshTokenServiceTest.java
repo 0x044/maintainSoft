@@ -36,6 +36,13 @@ class RefreshTokenServiceTest {
     private RefreshTokenService refreshTokenService;
 
     @Test
+    void deletesExpiredTokenRecords() {
+        refreshTokenService.cleanupExpiredTokens();
+
+        verify(refreshTokenRepository).deleteByExpiresAtBefore(any(Instant.class));
+    }
+
+    @Test
     void storesOnlyAHashWhenIssuingToken() {
         User user = user();
         Jwt jwt = jwt("jti-1", user.getEmail());
