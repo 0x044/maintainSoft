@@ -69,4 +69,18 @@ public class GlobalExceptionHandler {
                 new ErrorResponse(409, "Duplicate", e.getMessage(), Instant.now())
         );
     }
+
+    @ExceptionHandler(DuplicateMachineException.class)
+    ResponseEntity<ErrorResponse> handleDuplicateMachine(DuplicateMachineException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now())
+        );
+    }
+
+    @ExceptionHandler(InvalidMachineException.class)
+    ResponseEntity<ErrorResponse> handleInvalidMachine(InvalidMachineException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponse(400, "Bad Request", e.getMessage(), Instant.now())
+        );
+    }
 }

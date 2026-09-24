@@ -9,4 +9,12 @@ import java.util.UUID;
 
 public interface MachineRepository extends JpaRepository<Machine, UUID> {
     List<Machine> findByDepartment(Department department);
+
+    List<Machine> findByDepartment_IdOrderByNameAsc(UUID departmentId);
+
+    List<Machine> findByStatus_IdOrderByNameAsc(UUID statusId);
+
+    List<Machine> findByDepartment_IdAndStatus_IdOrderByNameAsc(UUID departmentId, UUID statusId);
+
+    List<Machine> findAllByOrderByNameAsc();
 }

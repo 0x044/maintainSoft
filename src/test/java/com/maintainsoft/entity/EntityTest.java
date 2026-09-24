@@ -274,7 +274,7 @@ class EntityTest {
             MachineStatus status = new MachineStatus();
             status.setName("Decommissioned");
             Machine machine = new Machine("Drill Press", null, "SN-002",
-                    status, true, 3L);
+                    status, null, null, null, null, null, null, null, null, null, true, 3L);
 
             assertThat(machine.getName()).isEqualTo("Drill Press");
             assertThat(machine.getSerialNumber()).isEqualTo("SN-002");

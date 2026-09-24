@@ -2,6 +2,8 @@ package com.maintainsoft.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLRestriction;
+
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,6 +38,33 @@ public class Machine extends BaseEntity {
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "status_id", nullable = false)
   private MachineStatus status;
+
+  @Column
+  private String equipmentType;
+
+  @Column
+  private String manufacturer;
+
+  @Column
+  private String model;
+
+  @Column
+  private String location;
+
+  @Column
+  private Instant commissionedAt;
+
+  @Column
+  private Instant decommissionedAt;
+
+  @Column
+  private Instant lastServicedAt;
+
+  @Column
+  private Instant nextServiceDueAt;
+
+  @Column
+  private Integer maintenanceIntervalDays;
 
   @Column(nullable = false)
   private boolean deleted = false;
