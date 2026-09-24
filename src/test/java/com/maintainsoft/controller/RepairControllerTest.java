@@ -1,9 +1,14 @@
 package com.maintainsoft.controller;
 
+import com.maintainsoft.dto.AddRepairCostRequest;
+import com.maintainsoft.dto.AddRepairUpdateRequest;
 import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
+import com.maintainsoft.dto.RepairCostResponse;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.RepairUpdateResponse;
 import com.maintainsoft.dto.UpdateRepairRequest;
+import com.maintainsoft.enums.RepairCostCategory;
 import com.maintainsoft.enums.RepairPriority;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.enums.RepairType;
@@ -19,6 +24,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -112,6 +118,62 @@ class RepairControllerTest {
         verify(repairService).assignRepair(id, request, authentication);
     }
 
+    @Test
+    void addRepairUpdateReturnsCreated() {
+        UUID id = UUID.randomUUID();
+        AddRepairUpdateRequest request = new AddRepairUpdateRequest(
+                RepairStatus.IN_PROGRESS, "Technician started"
+        );
+        Authentication authentication = authentication();
+        when(repairService.addRepairUpdate(id, request, authentication)).thenReturn(updateResponse());
+
+        ResponseEntity<RepairUpdateResponse> result = repairController.addRepairUpdate(
+                id, request, authentication
+        );
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(repairService).addRepairUpdate(id, request, authentication);
+    }
+
+    @Test
+    void listRepairUpdatesReturnsOk() {
+        UUID id = UUID.randomUUID();
+        when(repairService.listRepairUpdates(id)).thenReturn(List.of(updateResponse()));
+
+        ResponseEntity<List<RepairUpdateResponse>> result = repairController.listRepairUpdates(id);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).hasSize(1);
+    }
+
+    @Test
+    void addRepairCostReturnsCreated() {
+        UUID id = UUID.randomUUID();
+        AddRepairCostRequest request = new AddRepairCostRequest(
+                RepairCostCategory.LABOR, new BigDecimal("100.00"), "Labor"
+        );
+        Authentication authentication = authentication();
+        when(repairService.addRepairCost(id, request, authentication)).thenReturn(costResponse());
+
+        ResponseEntity<RepairCostResponse> result = repairController.addRepairCost(
+                id, request, authentication
+        );
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        verify(repairService).addRepairCost(id, request, authentication);
+    }
+
+    @Test
+    void listRepairCostsReturnsOk() {
+        UUID id = UUID.randomUUID();
+        when(repairService.listRepairCosts(id)).thenReturn(List.of(costResponse()));
+
+        ResponseEntity<List<RepairCostResponse>> result = repairController.listRepairCosts(id);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).hasSize(1);
+    }
+
     private CreateRepairRequest request() {
         return new CreateRepairRequest(
                 UUID.randomUUID(),
@@ -141,6 +203,30 @@ class RepairControllerTest {
                 "External Technician",
                 "+91-9000000000",
                 "breakdown-1"
+        );
+    }
+
+    private RepairUpdateResponse updateResponse() {
+        return new RepairUpdateResponse(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                RepairStatus.IN_PROGRESS,
+                "Technician started",
+                Instant.parse("2026-09-24T05:00:00Z"),
+                "supervisor@example.com"
+        );
+    }
+
+    private RepairCostResponse costResponse() {
+        return new RepairCostResponse(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                RepairCostCategory.LABOR,
+                new BigDecimal("100.00"),
+                "INR",
+                "Labor",
+                Instant.parse("2026-09-24T05:00:00Z"),
+                "manager@example.com"
         );
     }
 

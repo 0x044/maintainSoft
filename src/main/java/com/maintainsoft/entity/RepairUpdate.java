@@ -3,9 +3,11 @@ package com.maintainsoft.entity;
 import com.maintainsoft.enums.RepairStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.Immutable;
 import lombok.Setter;
 
 @Entity
+@Immutable
 @Table(name = "repair_updates",
         indexes = {
                 @Index(name = "idx_repair_update_repair", columnList = "repair_id")

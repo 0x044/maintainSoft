@@ -1,11 +1,17 @@
 package com.maintainsoft.service;
 
+import com.maintainsoft.dto.AddRepairCostRequest;
+import com.maintainsoft.dto.AddRepairUpdateRequest;
 import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
+import com.maintainsoft.dto.RepairCostResponse;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.RepairUpdateResponse;
 import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.entity.Machine;
 import com.maintainsoft.entity.Repair;
+import com.maintainsoft.entity.RepairCost;
+import com.maintainsoft.entity.RepairUpdate;
 import com.maintainsoft.entity.User;
 import com.maintainsoft.enums.RepairPriority;
 import com.maintainsoft.enums.RepairStatus;
@@ -17,7 +23,9 @@ import com.maintainsoft.exception.RepairConflictException;
 import com.maintainsoft.exception.RepairForbiddenException;
 import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.MachineRepository;
+import com.maintainsoft.repository.RepairCostRepository;
 import com.maintainsoft.repository.RepairRepository;
+import com.maintainsoft.repository.RepairUpdateRepository;
 import com.maintainsoft.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,8 +34,11 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -37,6 +48,8 @@ public class RepairService {
     private final RepairRepository repairRepository;
     private final MachineRepository machineRepository;
     private final UserRepository userRepository;
+    private final RepairUpdateRepository repairUpdateRepository;
+    private final RepairCostRepository repairCostRepository;
 
     @Transactional(readOnly = true)
     public List<RepairResponse> listRepairs(RepairStatus status, UUID machineId) {
@@ -165,6 +178,126 @@ public class RepairService {
         return toResponse(repairRepository.saveAndFlush(repair));
     }
 
+    @Transactional(readOnly = true)
+    public List<RepairUpdateResponse> listRepairUpdates(UUID id) {
+        findRepair(id);
+        return repairUpdateRepository.findByRepair_IdOrderByCreatedAtAsc(id).stream()
+                .map(this::toUpdateResponse)
+                .toList();
+    }
+
+    @Transactional
+    public RepairUpdateResponse addRepairUpdate(
+            UUID id,
+            AddRepairUpdateRequest request,
+            Authentication authentication
+    ) {
+        if (request == null || request.status() == null
+                || request.description() == null || request.description().isBlank()) {
+            throw new InvalidRepairException("status and description are required");
+        }
+
+        Repair repair = findRepair(id);
+        ensureCanPost(authentication, repair);
+        validateStatusTransition(repair.getRepairStatus(), request.status());
+
+        if (repair.getRepairStatus() != request.status()) {
+            repair.setRepairStatus(request.status());
+            if (request.status() == RepairStatus.COMPLETED) {
+                repair.setEndDate(Instant.now());
+            }
+            repairRepository.save(repair);
+        }
+
+        RepairUpdate update = new RepairUpdate();
+        update.setRepair(repair);
+        update.setRepairStatus(request.status());
+        update.setDescription(request.description());
+        repairUpdateRepository.save(update);
+        return toUpdateResponse(update);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RepairCostResponse> listRepairCosts(UUID id) {
+        findRepair(id);
+        return repairCostRepository.findByRepair_IdOrderByCreatedAtAsc(id).stream()
+                .map(this::toCostResponse)
+                .toList();
+    }
+
+    @Transactional
+    public RepairCostResponse addRepairCost(
+            UUID id,
+            AddRepairCostRequest request,
+            Authentication authentication
+    ) {
+        if (request == null || request.category() == null || request.amount() == null) {
+            throw new InvalidRepairException("category and amount are required");
+        }
+
+        Repair repair = findRepair(id);
+        ensureCanPost(authentication, repair);
+        BigDecimal amount = normalizeAmount(request.amount());
+
+        RepairCost cost = new RepairCost();
+        cost.setRepair(repair);
+        cost.setCategory(request.category());
+        cost.setAmount(amount);
+        cost.setDescription(request.description());
+        repairCostRepository.save(cost);
+        return toCostResponse(cost);
+    }
+
+    private void ensureCanPost(Authentication authentication, Repair repair) {
+        if (authentication == null || authentication.getAuthorities() == null) {
+            throw new RepairForbiddenException("Authentication is required");
+        }
+        if (hasRole(authentication, Role.MANAGER)) {
+            return;
+        }
+        if (!hasRole(authentication, Role.SUPERVISOR)) {
+            throw new RepairForbiddenException("Only the assigned supervisor can post repair updates");
+        }
+
+        User currentSupervisor = currentUser(authentication);
+        User assignedSupervisor = repair.getAssignedSupervisor();
+        if (assignedSupervisor == null
+                || !Objects.equals(assignedSupervisor.getId(), currentSupervisor.getId())) {
+            throw new RepairForbiddenException("Only the assigned supervisor can post repair updates");
+        }
+    }
+
+    private void validateStatusTransition(RepairStatus current, RepairStatus requested) {
+        if (current == null || requested == null) {
+            throw new InvalidRepairException("Repair status is required");
+        }
+        if (current == requested) {
+            return;
+        }
+        boolean valid = (current == RepairStatus.OPEN && requested == RepairStatus.IN_PROGRESS)
+                || (current == RepairStatus.IN_PROGRESS && requested == RepairStatus.COMPLETED);
+        if (!valid) {
+            throw new InvalidRepairException(
+                    "Repair status must move from " + current + " to " + requested
+            );
+        }
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        if (amount.signum() < 0) {
+            throw new InvalidRepairException("Cost amount cannot be negative");
+        }
+        try {
+            BigDecimal normalized = amount.setScale(2, RoundingMode.UNNECESSARY);
+            if (normalized.precision() - normalized.scale() > 17) {
+                throw new InvalidRepairException("Cost amount is too large");
+            }
+            return normalized;
+        } catch (ArithmeticException exception) {
+            throw new InvalidRepairException("Cost amount must have at most two decimal places");
+        }
+    }
+
     private Repair findRepair(UUID id) {
         return repairRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Repair not found: " + id));
@@ -231,6 +364,30 @@ public class RepairService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Authenticated user not found: " + authentication.getName()
                 ));
+    }
+
+    private RepairUpdateResponse toUpdateResponse(RepairUpdate update) {
+        return new RepairUpdateResponse(
+                update.getId(),
+                update.getRepair().getId(),
+                update.getRepairStatus(),
+                update.getDescription(),
+                update.getCreatedAt(),
+                update.getCreatedBy()
+        );
+    }
+
+    private RepairCostResponse toCostResponse(RepairCost cost) {
+        return new RepairCostResponse(
+                cost.getId(),
+                cost.getRepair().getId(),
+                cost.getCategory(),
+                cost.getAmount(),
+                "INR",
+                cost.getDescription(),
+                cost.getCreatedAt(),
+                cost.getCreatedBy()
+        );
     }
 
     private RepairResponse toResponse(Repair repair) {

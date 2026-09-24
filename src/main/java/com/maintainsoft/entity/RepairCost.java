@@ -11,10 +11,12 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Immutable;
 
 import java.math.BigDecimal;
 
 @Entity
+@Immutable
 @Table(name = "repair_costs")
 @Getter
 @Setter

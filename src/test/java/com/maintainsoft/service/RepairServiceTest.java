@@ -1,21 +1,31 @@
 package com.maintainsoft.service;
 
+import com.maintainsoft.dto.AddRepairCostRequest;
+import com.maintainsoft.dto.AddRepairUpdateRequest;
 import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
+import com.maintainsoft.dto.RepairCostResponse;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.RepairUpdateResponse;
 import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.entity.Machine;
 import com.maintainsoft.entity.Repair;
+import com.maintainsoft.entity.RepairCost;
+import com.maintainsoft.entity.RepairUpdate;
 import com.maintainsoft.entity.User;
+import com.maintainsoft.enums.RepairCostCategory;
 import com.maintainsoft.enums.RepairPriority;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.enums.RepairType;
 import com.maintainsoft.enums.Role;
+import com.maintainsoft.exception.InvalidRepairException;
 import com.maintainsoft.exception.RepairConflictException;
 import com.maintainsoft.exception.RepairForbiddenException;
 import com.maintainsoft.exception.ResourceNotFoundException;
 import com.maintainsoft.repository.MachineRepository;
+import com.maintainsoft.repository.RepairCostRepository;
 import com.maintainsoft.repository.RepairRepository;
+import com.maintainsoft.repository.RepairUpdateRepository;
 import com.maintainsoft.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +37,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +61,12 @@ class RepairServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private RepairUpdateRepository repairUpdateRepository;
+
+    @Mock
+    private RepairCostRepository repairCostRepository;
 
     @InjectMocks
     private RepairService repairService;
@@ -272,6 +289,136 @@ class RepairServiceTest {
         )).isInstanceOf(RepairForbiddenException.class);
 
         verify(repairRepository, never()).findById(any());
+    }
+
+    @Test
+    void assignedSupervisorCanAppendForwardStatusUpdate() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setRole(Role.SUPERVISOR);
+        repair.setAssignedSupervisor(supervisor);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(userRepository.findByEmail("supervisor@example.com")).thenReturn(Optional.of(supervisor));
+        when(repairRepository.save(repair)).thenReturn(repair);
+        when(repairUpdateRepository.save(any(RepairUpdate.class))).thenAnswer(invocation -> {
+            RepairUpdate update = invocation.getArgument(0);
+            update.setId(UUID.randomUUID());
+            return update;
+        });
+
+        RepairUpdateResponse response = repairService.addRepairUpdate(
+                repair.getId(),
+                new AddRepairUpdateRequest(RepairStatus.IN_PROGRESS, "Technician started work"),
+                authentication("supervisor@example.com", "ROLE_SUPERVISOR")
+        );
+
+        assertThat(repair.getRepairStatus()).isEqualTo(RepairStatus.IN_PROGRESS);
+        assertThat(response.status()).isEqualTo(RepairStatus.IN_PROGRESS);
+        assertThat(response.repairId()).isEqualTo(repair.getId());
+    }
+
+    @Test
+    void managerCanAppendInrCostToUnassignedRepair() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(repairCostRepository.save(any(RepairCost.class))).thenAnswer(invocation -> {
+            RepairCost cost = invocation.getArgument(0);
+            cost.setId(UUID.randomUUID());
+            return cost;
+        });
+
+        RepairCostResponse response = repairService.addRepairCost(
+                repair.getId(),
+                new AddRepairCostRequest(
+                        RepairCostCategory.LABOR,
+                        new BigDecimal("1250.5"),
+                        "Technician labor"
+                ),
+                authentication("manager@example.com", "ROLE_MANAGER")
+        );
+
+        assertThat(response.amount()).isEqualByComparingTo("1250.50");
+        assertThat(response.currency()).isEqualTo("INR");
+        assertThat(response.category()).isEqualTo(RepairCostCategory.LABOR);
+    }
+
+    @Test
+    void rejectsSupervisorUpdateForUnassignedRepair() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setRole(Role.SUPERVISOR);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(userRepository.findByEmail("supervisor@example.com")).thenReturn(Optional.of(supervisor));
+
+        assertThatThrownBy(() -> repairService.addRepairUpdate(
+                repair.getId(),
+                new AddRepairUpdateRequest(RepairStatus.IN_PROGRESS, "Started"),
+                authentication("supervisor@example.com", "ROLE_SUPERVISOR")
+        )).isInstanceOf(RepairForbiddenException.class);
+
+        verify(repairUpdateRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsSkippingRepairStatus() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        User supervisor = user("supervisor@example.com", "Ravi");
+        supervisor.setRole(Role.SUPERVISOR);
+        repair.setAssignedSupervisor(supervisor);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+        when(userRepository.findByEmail("supervisor@example.com")).thenReturn(Optional.of(supervisor));
+
+        assertThatThrownBy(() -> repairService.addRepairUpdate(
+                repair.getId(),
+                new AddRepairUpdateRequest(RepairStatus.COMPLETED, "Finished"),
+                authentication("supervisor@example.com", "ROLE_SUPERVISOR")
+        )).isInstanceOf(InvalidRepairException.class);
+
+        verify(repairRepository, never()).save(any());
+        verify(repairUpdateRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectsCostWithMoreThanTwoDecimalPlaces() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+
+        assertThatThrownBy(() -> repairService.addRepairCost(
+                repair.getId(),
+                new AddRepairCostRequest(
+                        RepairCostCategory.OTHER,
+                        new BigDecimal("10.123"),
+                        "Invalid precision"
+                ),
+                authentication("manager@example.com", "ROLE_MANAGER")
+        )).isInstanceOf(InvalidRepairException.class);
+
+        verify(repairCostRepository, never()).save(any());
+    }
+
+    @Test
+    void listsAppendOnlyUpdateAndCostHistory() {
+        Repair repair = repair(machine(), RepairType.BREAKDOWN);
+        when(repairRepository.findById(repair.getId())).thenReturn(Optional.of(repair));
+
+        RepairUpdate update = new RepairUpdate();
+        update.setId(UUID.randomUUID());
+        update.setRepair(repair);
+        update.setRepairStatus(RepairStatus.IN_PROGRESS);
+        update.setDescription("Started");
+        when(repairUpdateRepository.findByRepair_IdOrderByCreatedAtAsc(repair.getId()))
+                .thenReturn(List.of(update));
+
+        RepairCost cost = new RepairCost();
+        cost.setId(UUID.randomUUID());
+        cost.setRepair(repair);
+        cost.setCategory(RepairCostCategory.PARTS);
+        cost.setAmount(new BigDecimal("10.00"));
+        when(repairCostRepository.findByRepair_IdOrderByCreatedAtAsc(repair.getId()))
+                .thenReturn(List.of(cost));
+
+        assertThat(repairService.listRepairUpdates(repair.getId())).hasSize(1);
+        assertThat(repairService.listRepairCosts(repair.getId())).hasSize(1);
     }
 
     private CreateRepairRequest request(UUID machineId, RepairType type, String key) {

@@ -1,8 +1,12 @@
 package com.maintainsoft.controller;
 
+import com.maintainsoft.dto.AddRepairCostRequest;
+import com.maintainsoft.dto.AddRepairUpdateRequest;
 import com.maintainsoft.dto.AssignRepairRequest;
 import com.maintainsoft.dto.CreateRepairRequest;
+import com.maintainsoft.dto.RepairCostResponse;
 import com.maintainsoft.dto.RepairResponse;
+import com.maintainsoft.dto.RepairUpdateResponse;
 import com.maintainsoft.dto.UpdateRepairRequest;
 import com.maintainsoft.enums.RepairStatus;
 import com.maintainsoft.service.RepairService;
@@ -73,9 +77,41 @@ public class RepairController {
     @PatchMapping("/{id}/assignment")
     ResponseEntity<RepairResponse> assignRepair(
             @PathVariable UUID id,
-            @RequestBody AssignRepairRequest request,
+            @Valid @RequestBody AssignRepairRequest request,
             Authentication authentication
     ) {
         return ResponseEntity.ok(repairService.assignRepair(id, request, authentication));
+    }
+
+    @GetMapping("/{id}/updates")
+    ResponseEntity<List<RepairUpdateResponse>> listRepairUpdates(@PathVariable UUID id) {
+        return ResponseEntity.ok(repairService.listRepairUpdates(id));
+    }
+
+    @PostMapping("/{id}/updates")
+    ResponseEntity<RepairUpdateResponse> addRepairUpdate(
+            @PathVariable UUID id,
+            @Valid @RequestBody AddRepairUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                repairService.addRepairUpdate(id, request, authentication)
+        );
+    }
+
+    @GetMapping("/{id}/costs")
+    ResponseEntity<List<RepairCostResponse>> listRepairCosts(@PathVariable UUID id) {
+        return ResponseEntity.ok(repairService.listRepairCosts(id));
+    }
+
+    @PostMapping("/{id}/costs")
+    ResponseEntity<RepairCostResponse> addRepairCost(
+            @PathVariable UUID id,
+            @Valid @RequestBody AddRepairCostRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                repairService.addRepairCost(id, request, authentication)
+        );
     }
 }
