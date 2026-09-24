@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `fbda37b`, verified 2026-09-24.
+> **Source baseline:** commit `d57dc84`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -14,7 +14,7 @@ MaintainSoft is currently a backend-only Spring Boot learning project intended t
 exercise production-style patterns for maintenance management. The persistence model
 covers departments, users, machines, technicians, repairs, repair history, and spare
 parts. The implemented API now includes master-data, inventory, and repair workflows;
-release hardening and isolated HTTP/database tests remain open.
+release hardening, complete HTTP/database coverage, and hermetic test execution remain open.
 
 **Current release posture: not production-ready.** The next work should be security
 containment, reproducible testing, and authorization—not new feature breadth.
@@ -25,14 +25,17 @@ The most urgent facts are:
   application JAR. It must be treated as compromised and rotated.
 - The bootstrap manager uses hard-coded, publicly known credentials.
 - Public registration is removed; manager-only supervisor invitations now exist.
-- URL-level role rules cover the initial user/status/machine routes, but method
-  authorization and the complete HTTP role matrix remain untested.
-- Access and refresh token purposes are separated, but refresh rotation/revocation is
-  still missing.
-- The full context test now passes against the authorized test PostgreSQL database;
-  routine isolation and bootstrap-disable test configuration are still open.
-- The current source compiles on Java 26 and 314 database-backed tests pass, but
-  MVC/security and concurrency coverage remain incomplete.
+- URL-level role rules cover the initial user/status/machine/repair routes, and initial
+  HTTP 401/403 coverage is green, but method authorization and the complete role matrix
+  remain untested.
+- Access and refresh token purposes are separated; hashed refresh-token rotation,
+  family replay revocation, logout, and scheduled cleanup are implemented.
+- The default full context test still passes against the authorized test PostgreSQL
+  database and can mutate it; an opt-in disposable-database profile is available, but
+  hermetic default isolation is still open.
+- The current source compiles on Java 26 and 315 tests pass (one opt-in isolated-profile
+  test is skipped without disposable database variables), but MVC/security and
+  concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
 
@@ -52,8 +55,8 @@ The most urgent facts are:
 - Conventional layers: `controller`, `service`, `repository`, `entity`, `dto`,
   `enums`, `exception`, `security`
 - No frontend is currently present. Earlier Vaadin/Next.js experiments were removed.
-- No Maven wrapper, CI workflow, Docker/deployment descriptor, test resources, or
-  `README.md` is currently committed.
+- No Maven wrapper, CI workflow, Docker/deployment descriptor, or `README.md` is
+  currently committed; an opt-in test profile now exists under `src/test/resources`.
 - `flyway.conf` is present but empty and is not a substitute for a configured
   environment-specific migration setup.
 
@@ -64,7 +67,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 314 tests passed
+Result: BUILD SUCCESS — 315 tests passed, 1 opt-in test skipped
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -73,9 +76,9 @@ succeeds. The passing suite includes the full Spring context test, Mockito unit 
 accessor/record tests, direct controller/exception-handler invocations, and focused
 security/validation tests.
 
-The context test still inherits the configured external datasource and can execute
-`DatabaseInitializer`; an isolated Testcontainers/test profile remains a hardening
-task even though the authorized test database run is now green.
+The default context test still inherits the configured external datasource and can
+execute `DatabaseInitializer`; the opt-in `test` profile disables seeding and accepts a
+disposable datasource, while a hermetic Testcontainers/default workflow remains open.
 
 Additional tooling findings:
 
@@ -404,13 +407,16 @@ rotation remain open.
 
 #### P1.5 Isolate the test environment
 
-**Finding:** the full context test now passes against the authorized test database and
-V1–V8 are verified there, but it still inherits production-like configuration and can
-mutate that database. A repeatable isolated test profile is still required.
+**Finding:** the default full context test still passes against the authorized test
+database and V1–V8 are verified there, so it can still mutate that database. An opt-in
+`test` profile now accepts `TEST_DATABASE_URL`, `TEST_DATABASE_USERNAME`, and
+`TEST_DATABASE_PASSWORD`, disables bootstrap seeding, and runs the same migration/context
+check against a caller-provided disposable database. A hermetic default/Testcontainers
+workflow is still required.
 
-- [ ] Add a test profile and test-only datasource configuration.
+- [x] Add an opt-in test profile and test-only datasource configuration.
 - [ ] Use Testcontainers PostgreSQL or a deliberately disposable local database.
-- [ ] Disable the bootstrap initializer in ordinary integration tests.
+- [x] Disable the bootstrap initializer in the opt-in integration profile.
 - [ ] Inventory each deployment database's `flyway_schema_history` before choosing
       between preserving V1, baselining, or creating V2+; do not blindly run `repair`
       to hide checksum or schema mismatches.
@@ -426,7 +432,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 314-test inventory still overstates behavioral coverage. Add:
+The current 315-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -526,9 +532,11 @@ Current progress: manager user invitation, Department CRUD, request validation, 
 role mapping, token-purpose separation, hashed refresh-token rotation/revocation/logout and
 cleanup, CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
-INR costs, repair-driven machine status defaults, and initial HTTP security coverage are
-implemented. V1–V8 pass against the authorized test database; isolated migration tests,
-secret rotation, and the complete role/security matrix remain open.
+INR costs, repair-driven machine status defaults, initial HTTP security coverage, and an
+opt-in disposable-database profile are implemented. V1–V8 pass against the authorized
+test database; the opt-in profile is skipped without its three environment variables,
+and hermetic Testcontainers coverage, secret rotation, and the complete role/security
+matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
