@@ -265,6 +265,8 @@ question below explicitly says otherwise.
 
 - `spring.flyway.enabled=true` and `spring.jpa.hibernate.ddl-auto=validate` are now
   active.
+- `application-prod.properties` limits Actuator exposure to health/info and disables
+  Swagger/OpenAPI; local defaults remain available for development.
 - `V1__init_schema.sql` has been reduced to one table/index/constraint block.
 - V2 adds an additive `machine_statuses` catalog and seeds the five built-in statuses.
 - V3 backfills existing machines, replaces the legacy status column with `status_id`,
@@ -403,7 +405,7 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 
 - [ ] Add login/refresh and breakdown-report throttling; the current Resilience4j
       dependency is unused and is not Spring-integrated.
-- [ ] Restrict Actuator `startup`/`conditions` and Swagger/OpenAPI by environment.
+- [x] Restrict Actuator `startup`/`conditions` and Swagger/OpenAPI in the `prod` profile.
 - [x] Fix CORS methods and allowed headers for the current API; exact approved origins
       remain unchanged.
 - [x] Return stable JSON 401/403 responses from the security filter chain.
