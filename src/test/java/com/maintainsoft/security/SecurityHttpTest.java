@@ -117,12 +117,23 @@ class SecurityHttpTest {
     }
 
     @Test
-    void reporterCannotReadManagerSupervisorMachineRoutes() throws Exception {
-        mockMvc.perform(get("/api/v1/machines")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_REPORTER"))))
+    void reporterCannotCreateMachine() throws Exception {
+        mockMvc.perform(post("/api/v1/machines")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_REPORTER")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(machineService);
+    }
+
+    @Test
+    void reporterCanReadMachineRoutes() throws Exception {
+        when(machineService.listMachines(null, null)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/machines")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_REPORTER"))))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -172,6 +183,15 @@ class SecurityHttpTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Special\",\"color\":\"#123456\"}"))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void reporterCanReadSpareRoutes() throws Exception {
+        when(spareService.listSpares()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/spares")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_REPORTER"))))
+                .andExpect(status().isOk());
     }
 
     @Test
