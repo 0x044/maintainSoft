@@ -31,6 +31,16 @@ public class Repair extends BaseEntity {
     @JoinColumn(name = "technician_id")
     private Technician technician;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_supervisor_id")
+    private User assignedSupervisor;
+
+    @Column(name = "external_technician_name")
+    private String externalTechnicianName;
+
+    @Column(name = "external_technician_phone", length = 32)
+    private String externalTechnicianPhone;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RepairStatus repairStatus;
@@ -55,7 +65,7 @@ public class Repair extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String idempotencyKey;
 
-    @OneToMany(mappedBy = "repair", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "repair", cascade = CascadeType.PERSIST)
     @OrderBy("createdAt ASC")
     private List<RepairUpdate> updateList = new ArrayList<>();
 
