@@ -23,13 +23,15 @@ The most urgent facts are:
 - A JWT RSA private key is tracked under `src/main/resources` and is packaged into the
   application JAR. It must be treated as compromised and rotated.
 - The bootstrap manager uses hard-coded, publicly known credentials.
-- Public registration is enabled and creates active supervisor accounts.
-- No role-level authorization exists; every authenticated user can mutate departments.
-- Refresh tokens can be accepted as access tokens, and cannot be revoked or rotated.
-- The only Spring context test uses the configured external database and can run Flyway
-  plus the bootstrap initializer. It is not safe for routine test execution.
-- The current source compiles on Java 26 and 202 non-context tests pass, but migration,
-  MVC/security, repository, and concurrency behavior are not integration-tested.
+- Public registration is removed; manager-only supervisor invitations now exist.
+- URL-level role rules cover the initial user/status/machine routes, but method
+  authorization and the complete HTTP role matrix remain untested.
+- Access and refresh token purposes are separated, but refresh rotation/revocation is
+  still missing.
+- The full context test now passes against the authorized test PostgreSQL database;
+  routine isolation and bootstrap-disable test configuration are still open.
+- The current source compiles on Java 26 and 241 database-backed tests pass, but
+  MVC/security and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
 
@@ -56,27 +58,23 @@ The most urgent facts are:
 
 ### Verified build and test state
 
-The following checks were run with Java 26:
+The following checks were run with Java 26 against the authorized test PostgreSQL
+instance:
 
 ```text
-mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
-Result: BUILD SUCCESS — 240 tests passed
+mvn -B -ntp clean verify
+Result: BUILD SUCCESS — 241 tests passed
 ```
 
-A test-skipping package build also succeeds. The 240 passing tests are mostly
-Mockito unit tests, accessor/record tests, direct controller/exception-handler
-invocations, and focused security/validation tests.
+Flyway validated and applied V1–V4, Hibernate initialized against PostgreSQL 18.6, and
+the application context started successfully. A test-skipping package build also
+succeeds. The passing suite includes the full Spring context test, Mockito unit tests,
+accessor/record tests, direct controller/exception-handler invocations, and focused
+security/validation tests.
 
-The remaining test is:
-
-```text
-src/test/java/com/maintainsoft/MaintainsoftApplicationTests.java
-```
-
-It is intentionally excluded from routine runs because it has no test profile,
-embedded database, Testcontainers setup, or isolated datasource. It can connect to the
-configured PostgreSQL instance, run Flyway, validate JPA mappings, and execute
-`DatabaseInitializer`.
+The context test still inherits the configured external datasource and can execute
+`DatabaseInitializer`; an isolated Testcontainers/test profile remains a hardening
+task even though the authorized test database run is now green.
 
 Additional tooling findings:
 
@@ -90,6 +88,8 @@ Additional tooling findings:
   POM configures the Maven plugin as `12.0.0`. The plugin has no repository-provided
   datasource configuration, and `flyway.conf` is empty. Align or remove the plugin
   before relying on CLI migration commands.
+- Hibernate reports that `RepairSpare$RepairSpareId` does not override `equals()`; fix
+  the composite-key mapping before relying on entity identity in collections.
 
 ### Confirmed product brief
 
@@ -240,7 +240,8 @@ question below explicitly says otherwise.
   and adds the catalog foreign key; it requires a controlled migration window because
   the old column is removed.
 - V4 adds machine equipment, placement, lifecycle, and maintenance fields.
-- V2–V4 have not been proven against a disposable PostgreSQL database.
+- V2–V4 were validated and applied successfully against the authorized test PostgreSQL
+  database; repeatable Testcontainers coverage is still pending.
 - V1 was changed in the latest commit; environments that applied an earlier checksum
   may require an explicit repair/baseline procedure.
 - The schema lacks important invariants for nonnegative stock, positive spare usage,
@@ -371,8 +372,9 @@ rotation remain open.
 
 #### P1.5 Isolate the test environment
 
-**Finding:** the full context test inherits production-like configuration and can mutate
-the configured database.
+**Finding:** the full context test now passes against the authorized test database and
+V1–V4 are verified there, but it still inherits production-like configuration and can
+mutate that database. A repeatable isolated test profile is still required.
 
 - [ ] Add a test profile and test-only datasource configuration.
 - [ ] Use Testcontainers PostgreSQL or a deliberately disposable local database.
@@ -382,7 +384,8 @@ the configured database.
       to hide checksum or schema mismatches.
 - [ ] Align the runtime and Maven-plugin Flyway versions, or remove the unused Maven
       plugin and document the supported migration workflow.
-- [ ] Add tests for Flyway from an empty database, JPA validation, and schema history.
+- [ ] Add clean-database migration tests in addition to the successful V1→V4 test-DB
+      run.
 - [ ] Make `mvn verify` safe by default.
 
 **Acceptance:** a clean checkout can run the complete test suite without network access
@@ -489,8 +492,9 @@ This is the first business milestone.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
 role mapping, token-purpose separation, CORS, the V2–V4 status/machine foundation, and
-Machine CRUD are implemented. Spare inventory, repairs, migration integration, and full
-HTTP security integration tests remain open.
+Machine CRUD are implemented. V1–V4 pass against the authorized test database; spare
+inventory, repairs, isolated migration tests, and full HTTP security integration tests
+remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
@@ -548,14 +552,16 @@ vertical slice is:
 - [ ] No secrets in source, fixtures, reports, logs, or packaged artifacts.
 - [ ] `git diff --check` and a clean, intentional worktree diff.
 
-After P1.5 provides an isolated test datasource, the canonical command should be:
+The canonical command has now passed against the authorized test database:
 
 ```bash
 mvn -B -ntp clean verify
 ```
 
-Until then, the explicit exclusion is a **database-contact avoidance** workaround,
-not a fully safe release command:
+It is still not safe on an arbitrary checkout until P1.5 provides an isolated test
+datasource. Without that isolation, the full command may mutate the configured
+application database; the explicit exclusion is a **database-contact avoidance**
+workaround only:
 
 ```bash
 mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
