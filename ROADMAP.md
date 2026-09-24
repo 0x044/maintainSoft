@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `47ef006`, verified 2026-09-24.
+> **Source baseline:** commit `5080217`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -13,7 +13,8 @@
 MaintainSoft is currently a backend-only Spring Boot learning project intended to
 exercise production-style patterns for maintenance management. The persistence model
 covers departments, users, machines, technicians, repairs, repair history, and spare
-parts, but the implemented application is still a small auth/department vertical slice.
+parts. The implemented API now includes master-data, inventory, and repair workflows;
+release hardening and isolated HTTP/database tests remain open.
 
 **Current release posture: not production-ready.** The next work should be security
 containment, reproducible testing, and authorization—not new feature breadth.
@@ -30,7 +31,7 @@ The most urgent facts are:
   still missing.
 - The full context test now passes against the authorized test PostgreSQL database;
   routine isolation and bootstrap-disable test configuration are still open.
-- The current source compiles on Java 26 and 264 database-backed tests pass, but
+- The current source compiles on Java 26 and 293 database-backed tests pass, but
   MVC/security and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
@@ -63,10 +64,10 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 264 tests passed
+Result: BUILD SUCCESS — 293 tests passed
 ```
 
-Flyway validated and applied V1–V5, Hibernate initialized against PostgreSQL 18.6, and
+Flyway validated and applied V1–V6, Hibernate initialized against PostgreSQL 18.6, and
 the application context started successfully. A test-skipping package build also
 succeeds. The passing suite includes the full Spring context test, Mockito unit tests,
 accessor/record tests, direct controller/exception-handler invocations, and focused
@@ -218,6 +219,16 @@ question below explicitly says otherwise.
 | `POST /api/v1/spares/{id}/stock/return` | Returns quantity from a repair and restores balance | Implemented |
 | `POST /api/v1/spares/{id}/stock/adjust` | Sets the absolute nonnegative balance | Implemented |
 | `POST /api/v1/spares/{id}/stock/issue` | Decrements balance and links usage to a repair | Implemented |
+| `GET /api/v1/repairs` | Lists repairs with optional status/machine filters | Implemented |
+| `GET /api/v1/repairs/{id}` | Reads one repair | Implemented |
+| `POST /api/v1/repairs` | Creates scheduled/breakdown repairs with idempotency and supervisor self-assignment | Implemented |
+| `PATCH /api/v1/repairs/{id}` | Updates repair master data | Implemented |
+| `POST /api/v1/repairs/{id}/claim` | Allows an unassigned supervisor to claim a repair | Implemented |
+| `PATCH /api/v1/repairs/{id}/assignment` | Manager-only assignment or temporary unassignment | Implemented |
+| `GET /api/v1/repairs/{id}/updates` | Lists append-only status/note history | Implemented |
+| `POST /api/v1/repairs/{id}/updates` | Appends a status/note entry and advances the lifecycle | Implemented |
+| `GET /api/v1/repairs/{id}/costs` | Lists append-only INR cost history | Implemented |
+| `POST /api/v1/repairs/{id}/costs` | Appends a labor/parts/travel/other INR cost | Implemented |
 | `GET /api/v1/health` | Authenticated principal echo, not a real health check | Implemented |
 | `GET /api/v1/departments` | Lists active departments | Implemented |
 | `POST /api/v1/departments` | Creates a department with DB-backed duplicate handling | Implemented |
@@ -226,8 +237,8 @@ question below explicitly says otherwise.
 
 ### Persistence model present but not wired into workflows
 
-- `Department`, `User`, `Machine`, `Technician`, `Repair`, `RepairUpdate`, `Spare`, and
-  `RepairSpare` entities exist.
+- `Department`, `User`, `Machine`, `Technician`, `Repair`, `RepairUpdate`, `RepairCost`,
+  `Spare`, and `RepairSpare` entities exist.
 - `UserRepository` and `DepartmentRepository` are used.
 - `UserManagementService` and `UserController` provide the initial manager-only
   supervisor invitation path.
@@ -236,9 +247,11 @@ question below explicitly says otherwise.
   assignment, and archive semantics.
 - `SpareService` and `SpareController` provide spare master data and current-balance
   inventory operations.
-- `RepairRepository` and `RepairSpareRepository` now support repair-linked spare usage,
-  but repair services/controllers are not implemented.
-- There are no technician, repair, or repair-update services/controllers.
+- `RepairService` and `RepairController` provide repair creation/listing, idempotency,
+  manager assignment, supervisor claim, append-only updates, and INR cost entries.
+- `RepairUpdateRepository` and `RepairCostRepository` provide append-only history reads.
+- `RepairSpareRepository` supports repair-linked spare usage.
+- The legacy `Technician` entity remains dormant; repairs use free-text technician fields.
 - There is no logout, password lifecycle, or refresh-token repository.
 
 ### Configuration and schema
@@ -252,7 +265,9 @@ question below explicitly says otherwise.
   the old column is removed.
 - V4 adds machine equipment, placement, lifecycle, and maintenance fields.
 - V5 adds spare description, unit, and machine-compatibility fields.
-- V1–V5 were validated and applied successfully against the authorized test PostgreSQL
+- V6 adds repair supervisor assignment, free-text external technician fields, and the
+  append-only `repair_costs` table.
+- V1–V6 were validated and applied successfully against the authorized test PostgreSQL
   database; repeatable Testcontainers coverage is still pending.
 - V1 was changed in the latest commit; environments that applied an earlier checksum
   may require an explicit repair/baseline procedure.
@@ -385,7 +400,7 @@ rotation remain open.
 #### P1.5 Isolate the test environment
 
 **Finding:** the full context test now passes against the authorized test database and
-V1–V5 are verified there, but it still inherits production-like configuration and can
+V1–V6 are verified there, but it still inherits production-like configuration and can
 mutate that database. A repeatable isolated test profile is still required.
 
 - [ ] Add a test profile and test-only datasource configuration.
@@ -396,7 +411,7 @@ mutate that database. A repeatable isolated test profile is still required.
       to hide checksum or schema mismatches.
 - [ ] Align the runtime and Maven-plugin Flyway versions, or remove the unused Maven
       plugin and document the supported migration workflow.
-- [ ] Add clean-database migration tests in addition to the successful V1→V4 test-DB
+- [ ] Add clean-database migration tests in addition to the successful V1→V6 test-DB
       run.
 - [ ] Make `mvn verify` safe by default.
 
@@ -406,7 +421,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 203-test inventory overstates behavioral coverage. Add:
+The current 293-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -449,11 +464,10 @@ The current 203-test inventory overstates behavioral coverage. Add:
 - [x] Implement the confirmed current-balance inventory model: receive, issue, adjust,
       and return without a required reason, with nonnegative stock and repair links for
       issued parts; do not add a full ledger in this milestone.
-- [ ] Store external technician name and phone as free text on repairs; do not make the
+- [x] Store external technician name and phone as free text on repairs; do not make the
       dormant `Technician` entity a prerequisite for the first milestone.
-- [ ] Remove `REMOVE` from the `RepairUpdate` cascade (not only orphan removal),
-      prohibit repair-history deletion or define archival semantics, and expose only an
-      append operation.
+- [x] Remove update-history cascade deletion, mark `RepairUpdate`/`RepairCost`
+      immutable, and expose only append/read operations.
 - [x] Add `equals`/`hashCode` to `RepairSpareId`.
 - [ ] Separate `Spare.lastPurchaseDate` from general update auditing, even though full
       purchase history is deferred.
@@ -504,19 +518,20 @@ This is the first business milestone.
   is append-only, and the flow is covered by isolated tests.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
-role mapping, token-purpose separation, CORS, the V2–V5 status/machine/spare foundation,
-Machine CRUD, Spare CRUD, and current-balance inventory are implemented. V1–V5 pass
-against the authorized test database; repairs, isolated migration tests, and full HTTP
-security integration tests remain open.
+role mapping, token-purpose separation, CORS, the V2–V6 status/machine/spare/repair
+foundation, Machine CRUD, Spare CRUD, current-balance inventory, and repair creation,
+assignment, lifecycle updates, and INR costs are implemented. V1–V6 pass against the
+authorized test database; machine-state automation, isolated migration tests, and full
+HTTP security integration tests remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
-- Enforce `OPEN → IN_PROGRESS → COMPLETED` transitions and append-only corrections.
-- Implement manager assignment, supervisor self-assignment, and supervisor claiming.
-- Apply repair-default machine status changes: breakdown/open work can set fault or
-  under-maintenance, and completion can set operational.
-- Allow a later authorized manual status change to override the automatic result.
-- Add transaction tests for status, cost, assignment, and spare-issue races.
+- [x] Enforce `OPEN → IN_PROGRESS → COMPLETED` transitions and append-only corrections.
+- [x] Implement manager assignment, supervisor self-assignment, and supervisor claiming.
+- [ ] Apply repair-default machine status changes: breakdown/open work can set fault or
+      under-maintenance, and completion can set operational.
+- [ ] Allow a later authorized manual status change to override the automatic result.
+- [ ] Add transaction tests for status, cost, assignment, and spare-issue races.
 
 ### Milestone 3 — Inventory evolution
 
