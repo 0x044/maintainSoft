@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `1ba8c3f`, verified 2026-09-24.
+> **Source baseline:** commit `fbda37b`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -31,7 +31,7 @@ The most urgent facts are:
   still missing.
 - The full context test now passes against the authorized test PostgreSQL database;
   routine isolation and bootstrap-disable test configuration are still open.
-- The current source compiles on Java 26 and 313 database-backed tests pass, but
+- The current source compiles on Java 26 and 314 database-backed tests pass, but
   MVC/security and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
@@ -64,7 +64,7 @@ instance:
 
 ```text
 mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 313 tests passed
+Result: BUILD SUCCESS — 314 tests passed
 ```
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
@@ -388,7 +388,7 @@ rotation remain open.
 - [x] Rotate refresh tokens atomically on every successful refresh.
 - [x] Reject replay of a consumed token and revoke token families when reuse is
       detected.
-- [x] Add `POST /api/v1/auth/logout`; expiry cleanup remains open.
+- [x] Add `POST /api/v1/auth/logout` and scheduled expiry cleanup for refresh-token rows.
 - [ ] Decide how user deactivation invalidates existing access tokens.
 
 #### P1.4 Add abuse controls and safe diagnostics
@@ -426,7 +426,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 313-test inventory still overstates behavioral coverage. Add:
+The current 314-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -523,12 +523,12 @@ This is the first business milestone.
   is append-only, and the flow is covered by isolated tests.
 
 Current progress: manager user invitation, Department CRUD, request validation, JWT
-role mapping, token-purpose separation, hashed refresh-token rotation/revocation/logout,
-CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD, Spare CRUD,
-current-balance inventory, repair creation, assignment, lifecycle updates, INR costs,
-repair-driven machine status defaults, and initial HTTP security coverage are implemented.
-V1–V8 pass against the authorized test database; isolated migration tests, refresh-token
-cleanup, secret rotation, and the complete role/security matrix remain open.
+role mapping, token-purpose separation, hashed refresh-token rotation/revocation/logout and
+cleanup, CORS, the V2–V8 status/machine/spare/repair/auth foundation, Machine CRUD,
+Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
+INR costs, repair-driven machine status defaults, and initial HTTP security coverage are
+implemented. V1–V8 pass against the authorized test database; isolated migration tests,
+secret rotation, and the complete role/security matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
