@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Transactional
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.bootstrap.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.bootstrap.enabled", havingValue = "true")
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
