@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `59a6972`, verified 2026-09-24.
+> **Source baseline:** commit `6411848`, verified 2026-09-24.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -33,7 +33,7 @@ The most urgent facts are:
 - The default full context test still passes against the authorized test PostgreSQL
   database and can mutate it; an opt-in disposable-database profile is available, but
   hermetic default isolation is still open.
-- The current source compiles on Java 26 and 336 tests pass (one opt-in isolated-profile
+- The current source compiles on Java 25 and 336 tests pass (one opt-in isolated-profile
   test is skipped without disposable database variables), but MVC/security and
   concurrency coverage remain incomplete.
 
@@ -42,8 +42,8 @@ The most urgent facts are:
 ### Technology
 
 - Spring Boot `4.0.6`
-- Java release `26`
-- Maven (verified with Maven `3.9.16` and Temurin `26.0.2.1`)
+- Java release `25`
+- Maven (verified with Maven `3.9.16` and Temurin `25.0.4.1`)
 - Spring MVC, Spring Data JPA/Hibernate, PostgreSQL
 - Spring Security OAuth2 resource server with hand-issued RSA JWTs
 - Flyway, Jasypt, Actuator, Springdoc, Lombok
@@ -62,7 +62,7 @@ The most urgent facts are:
 
 ### Verified build and test state
 
-The following checks were run with Java 26 against the authorized test PostgreSQL
+The following checks were run with Java 25 against the authorized test PostgreSQL
 instance:
 
 ```text
@@ -83,10 +83,10 @@ remains open.
 
 Additional tooling findings:
 
-- Java 26 compilation succeeds, but Lombok and Mockito emit deprecation/dynamic-agent
+- Java 25 compilation succeeds, but Lombok and Mockito emit deprecation/dynamic-agent
   warnings.
-- `maven-dependency-plugin:3.9.0:analyze` cannot read Java 26 class files (`major
-  version 70`) in the current toolchain. With a Java 17 override it runs but produces
+- `maven-dependency-plugin:3.9.0:analyze` cannot read Java 25 class files (`major
+  version 69`) in the current toolchain. With a Java 17 override it runs but produces
   many expected starter/transitive-dependency false positives.
 - Flyway runtime dependencies and the separately configured Maven Flyway plugin use
   different version lines: Boot `4.0.6` manages runtime Flyway `11.14.1`, while the
@@ -584,9 +584,8 @@ matrix remain open.
 
 - Restrict diagnostics and documentation endpoints by profile/environment.
 - Decide whether Resilience4j is required and implement it properly or remove it.
-- Resolve the supported JDK baseline; the current project target is Java 26, while the
-  LTS decision remains open. Pin the selected JDK in CI and add a Maven Wrapper (or
-  another reproducible Maven version constraint).
+- Resolve the supported JDK baseline; Java 25 LTS is now selected. Pin the selected
+  JDK in CI and add a Maven Wrapper (or another reproducible Maven version constraint).
 - Add CI for the selected JDK/Maven versions, the isolated test suite, packaging,
   dependency/security scanning, and migration validation.
 - Add a README covering setup, secret injection, database migration, bootstrap flow,
@@ -598,8 +597,7 @@ matrix remain open.
 A change is not complete merely because a unit test passes. The minimum gate for a
 vertical slice is:
 
-- [ ] Clean compile with the currently selected JDK (currently Java 26; confirm whether
-      an LTS baseline should replace it).
+- [x] Clean compile with the selected Java 25 LTS baseline.
 - [ ] Relevant unit tests.
 - [ ] MVC/security tests for the public contract.
 - [ ] PostgreSQL integration coverage for persistence and migrations.
@@ -656,8 +654,7 @@ P0.1 is closed; do not distribute the resulting JAR.
    reused after the first version?
 9. Can custom machine statuses be edited or archived after creation, or remain
    creation-only for the first milestone?
-10. Should Java 26 remain the required target, or should the project move to a supported
-    LTS toolchain?
+10. Java 25 is the selected project baseline; CI/toolchain pinning remains open.
 
 ## 10. Definition of Ready for Feature Development
 
