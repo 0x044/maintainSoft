@@ -70,9 +70,9 @@ mvn -B -ntp clean verify
 Result: BUILD SUCCESS — 336 tests passed, 1 opt-in test skipped
 ```
 
-The last full build was verified with Temurin JDK 25.0.4.1. The server's system Java 25
-installation currently provides `java` but not `javac`; install the full system JDK
-package before the next build. Maven now enforces the Java 25 range at validate time.
+The last full build was verified on 2026-09-25 with the SDKMAN-managed Temurin JDK
+25.0.4 and Maven 3.9.16. The server's system Java 25 installation is no longer a
+build blocker; Maven enforces the Java 25 range at validate time.
 
 Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
 the application context started successfully. A test-skipping package build also
