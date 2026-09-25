@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `5cb0fbe`, verified 2026-09-24.
+> **Source baseline:** commit `9745b43`, verified 2026-09-25.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -55,8 +55,9 @@ The most urgent facts are:
 - Conventional layers: `controller`, `service`, `repository`, `entity`, `dto`,
   `enums`, `exception`, `security`
 - No frontend is currently present. Earlier Vaadin/Next.js experiments were removed.
-- No Maven wrapper, CI workflow, Docker/deployment descriptor, or `README.md` is
-  currently committed; an opt-in test profile now exists under `src/test/resources`.
+- A Maven Wrapper is committed and pinned to Maven 3.9.16; no CI workflow,
+  Docker/deployment descriptor, or `README.md` is currently committed. An opt-in test
+  profile exists under `src/test/resources`.
 - `flyway.conf` is present but empty and is not a substitute for a configured
   environment-specific migration setup.
 
@@ -589,8 +590,8 @@ matrix remain open.
 - Restrict diagnostics and documentation endpoints by profile/environment.
 - Decide whether Resilience4j is required and implement it properly or remove it.
 - [x] Enforce the selected Java 25 baseline with Maven Enforcer.
-- [ ] Pin the selected JDK in CI and add a Maven Wrapper (or another reproducible Maven
-      version constraint).
+- [x] Add a Maven Wrapper pinned to Maven 3.9.16.
+- [ ] Pin the selected JDK in CI (or another reproducible toolchain constraint).
 - Add CI for the selected JDK/Maven versions, the isolated test suite, packaging,
   dependency/security scanning, and migration validation.
 - Add a README covering setup, secret injection, database migration, bootstrap flow,
@@ -659,7 +660,8 @@ P0.1 is closed; do not distribute the resulting JAR.
    reused after the first version?
 9. Can custom machine statuses be edited or archived after creation, or remain
    creation-only for the first milestone?
-10. Java 25 is the selected project baseline; CI/toolchain pinning remains open.
+10. Java 25 is the selected project baseline and Maven 3.9.16 is wrapper-pinned; CI
+    toolchain pinning remains open.
 
 ## 10. Definition of Ready for Feature Development
 
