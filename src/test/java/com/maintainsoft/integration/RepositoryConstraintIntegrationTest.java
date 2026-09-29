@@ -43,8 +43,8 @@ class RepositoryConstraintIntegrationTest {
         entityManager.detach(staleWriter);
 
         firstWriter.setPocName("First writer");
-        departmentRepository.saveAndFlush(firstWriter);
-        assertThat(firstWriter.getVersion()).isEqualTo(1L);
+        Department saved = departmentRepository.saveAndFlush(firstWriter);
+        assertThat(saved.getVersion()).isEqualTo(1L);
 
         staleWriter.setPocName("Stale writer");
         assertThatThrownBy(() -> departmentRepository.saveAndFlush(staleWriter))
