@@ -1,5 +1,6 @@
 package com.maintainsoft.security;
 
+import com.maintainsoft.testsupport.SecurityConfigs;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -9,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class JwtAuthenticationConverterTest {
 
-    private final SecurityConfig securityConfig = new SecurityConfig();
+    private final SecurityConfig securityConfig = SecurityConfigs.withThrowawayKeyPair();
 
     @Test
     void mapsManagerScopeToSpringManagerRole() {

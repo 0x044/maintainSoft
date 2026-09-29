@@ -49,28 +49,15 @@ public final class EmbeddedDatabase {
         System.setProperty("spring.datasource.password", PASSWORD);
     }
 
-    /**
-     * Registers the datasource with a Spring {@code DynamicPropertyRegistry} for
-     * tests that prefer an explicit {@code @DynamicPropertySource} hook.
-     */
-    public void registerAsDynamicProperties(
-            org.springframework.test.context.DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> jdbcUrl());
-        registry.add("spring.datasource.username", () -> USERNAME);
-        registry.add("spring.datasource.password", () -> PASSWORD);
-    }
-
-    public String jdbcUrl() {
-        return "jdbc:postgresql://localhost:" + get().getPort() + "/" + DATABASE;
-    }
-
-    private static EmbeddedPostgres get() {
+    private static EmbeddedPostgres instance() {
         synchronized (LOCK) {
-            if (instance == null) {
-                instance = startAndCreateDatabase();
-            }
             return instance;
         }
+    }
+
+    private String jdbcUrl() {
+        EmbeddedPostgres postgres = instance();
+        return "jdbc:postgresql://localhost:" + postgres.getPort() + "/" + DATABASE;
     }
 
     private static EmbeddedPostgres startAndCreateDatabase() {

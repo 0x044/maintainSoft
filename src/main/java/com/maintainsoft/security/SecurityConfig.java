@@ -8,10 +8,11 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -40,19 +41,23 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.time.Instant;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(RsaKeyProperties.class)
 public class SecurityConfig {
 
-    @Value("classpath:public.key")
-    RSAPublicKey key;
+    private final RsaKeyPair rsaKeyPair;
 
-    @Value("classpath:private.key")
-    RSAPrivateKey privateKey;
+    public SecurityConfig(RsaKeyPair rsaKeyPair) {
+        this.rsaKeyPair = rsaKeyPair;
+    }
+
+    @Bean
+    static RsaKeyPair rsaKeyPair(ResourceLoader resourceLoader, RsaKeyProperties properties) {
+        return RsaKeyPairLoader.load(resourceLoader, properties);
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -139,7 +144,9 @@ public class SecurityConfig {
 
     @Bean
     JwtEncoder jwtEncoder() {
-        JWK jwk = new RSAKey.Builder(this.key).privateKey(this.privateKey).build();
+        JWK jwk = new RSAKey.Builder(rsaKeyPair.publicKey())
+                .privateKey(rsaKeyPair.privateKey())
+                .build();
         JWKSource<SecurityContext> jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwks);
     }
@@ -156,7 +163,7 @@ public class SecurityConfig {
     }
 
     private JwtDecoder decoderForType(String expectedType) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(this.key).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(rsaKeyPair.publicKey()).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(JwtService.JWT_ISSUER),
                 tokenTypeValidator(expectedType)

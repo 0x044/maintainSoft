@@ -1,5 +1,6 @@
 package com.maintainsoft.security;
 
+import com.maintainsoft.testsupport.SecurityConfigs;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.cors.CorsConfiguration;
@@ -10,7 +11,7 @@ class CorsConfigurationTest {
 
     @Test
     void allowsBrowserMethodsAndHeadersRequiredByTheApi() {
-        CorsConfiguration configuration = new SecurityConfig()
+        CorsConfiguration configuration = SecurityConfigs.withThrowawayKeyPair()
                 .corsConfigurationSource()
                 .getCorsConfiguration(new MockHttpServletRequest("OPTIONS", "/api/v1/departments"));
 
