@@ -59,9 +59,10 @@ The most urgent facts are:
 - Conventional layers: `controller`, `service`, `repository`, `entity`, `dto`,
   `enums`, `exception`, `security`
 - No frontend is currently present. Earlier Vaadin/Next.js experiments were removed.
-- A Maven Wrapper is committed and pinned to Maven 3.9.16; no CI workflow,
-  Docker/deployment descriptor, or `README.md` is currently committed. An opt-in test
-  profile exists under `src/test/resources`.
+- A Maven Wrapper is committed and pinned to Maven 3.9.16, a `build` GitHub Actions
+  workflow runs the wrapper on Temurin 25, and a `README.md` documents setup, secret
+  injection, migrations, and test commands. No Docker/deployment descriptor is
+  committed. An opt-in test profile exists under `src/test/resources`.
 - `flyway.conf` is present but empty and is not a substitute for a configured
   environment-specific migration setup.
 
@@ -609,16 +610,21 @@ set, and secret rotation and the complete role/security matrix remain open.
 
 ### Milestone 5 — Release hardening
 
-- Restrict diagnostics and documentation endpoints by profile/environment.
-- Decide whether Resilience4j is required and implement it properly or remove it.
+- [x] Restrict diagnostics and documentation endpoints by profile/environment.
+- [ ] Decide whether Resilience4j is required and implement it properly or remove it.
 - [x] Enforce the selected Java 25 baseline with Maven Enforcer.
 - [x] Add a Maven Wrapper pinned to Maven 3.9.16.
-- [ ] Pin the selected JDK in CI (or another reproducible toolchain constraint).
-- Add CI for the selected JDK/Maven versions, the isolated test suite, packaging,
-  dependency/security scanning, and migration validation.
-- Add a README covering setup, secret injection, database migration, bootstrap flow,
-  endpoint usage, and test commands.
-- Update this roadmap as decisions and acceptance evidence become available.
+- [x] Pin the selected JDK in CI through the `build` workflow (Temurin 25 + wrapper).
+- [x] Run the full suite, packaging, and a no-key-material check in CI. Because the
+      suite is hermetic, the job needs no database service and no secrets.
+- [ ] Add dependency and security scanning to CI.
+- [x] Add a README covering setup, secret injection, database migration, bootstrap flow,
+      endpoint usage, and test commands.
+- [x] Update this roadmap as decisions and acceptance evidence become available.
+
+The workflow is committed but has not been executed: this repository has no remote, so
+the YAML was validated locally and its shell steps were rehearsed against a real build.
+The first actual CI run is still unverified evidence.
 
 ## 7. Test and Quality Gates
 
