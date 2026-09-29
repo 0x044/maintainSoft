@@ -23,9 +23,18 @@ import java.util.Base64;
  */
 public class TestInfrastructureExtension implements BeforeAllCallback {
 
+    /**
+     * When this variable is set, the suite runs against the database named by the
+     * {@code test} profile instead of the embedded instance. This is the escape hatch
+     * for checking migrations against the PostgreSQL version used in deployment.
+     */
+    private static final String EXTERNAL_DATABASE_URL = "TEST_DATABASE_URL";
+
     @Override
     public void beforeAll(ExtensionContext context) {
-        EmbeddedDatabase.start().registerAsSystemProperties();
+        if (System.getenv(EXTERNAL_DATABASE_URL) == null) {
+            EmbeddedDatabase.start().registerAsSystemProperties();
+        }
         EphemeralRsaKeys.registerAsSystemProperties();
     }
 
