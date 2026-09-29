@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `9745b43`, verified 2026-09-25.
+> **Source baseline:** commit `4fc7be4`, verified 2026-09-29.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -14,15 +14,19 @@ MaintainSoft is currently a backend-only Spring Boot learning project intended t
 exercise production-style patterns for maintenance management. The persistence model
 covers departments, users, machines, technicians, repairs, repair history, and spare
 parts. The implemented API now includes master-data, inventory, and repair workflows;
-release hardening, complete HTTP/database coverage, and hermetic test execution remain open.
+release hardening and complete HTTP/database coverage remain open. Test execution is now
+hermetic, and no signing key is packaged with the application.
 
-**Current release posture: not production-ready.** The next work should be security
-containment, reproducible testing, and authorization—not new feature breadth.
+**Current release posture: not production-ready.** The next work should be remaining
+secret rotation, the complete role/authorization matrix, and release hardening—not new
+feature breadth.
 
 The most urgent facts are:
 
-- A JWT RSA private key is tracked under `src/main/resources` and is packaged into the
-  application JAR. It must be treated as compromised and rotated.
+- No signing key is packaged any more: the RSA key pair is loaded from an external
+  location configured through `app.security.rsa.*`, and a regression test fails the
+  build if key files reappear on the classpath. The keys that were committed earlier
+  are still in Git history and must still be treated as compromised and rotated.
 - The bootstrap manager uses hard-coded, publicly known credentials.
 - Public registration is removed; manager-only supervisor invitations now exist.
 - URL-level role rules cover the initial user/status/machine/repair routes, and
@@ -30,12 +34,12 @@ The most urgent facts are:
   complete role matrix remain untested.
 - Access and refresh token purposes are separated; hashed refresh-token rotation,
   family replay revocation, logout, and scheduled cleanup are implemented.
-- The default full context test still passes against the authorized test PostgreSQL
-  database and can mutate it; an opt-in disposable-database profile is available, but
-  hermetic default isolation is still open.
-- The current source compiles on Java 25 and 336 tests pass (one opt-in isolated-profile
-  test is skipped without disposable database variables), but MVC/security and
-  concurrency coverage remain incomplete.
+- The test suite is hermetic: it starts an embedded PostgreSQL instance and a
+  throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
+  configured application database, nor the Jasypt master password.
+- The current source compiles on Java 25 and 345 tests pass (one opt-in test that
+  targets an externally supplied database is skipped by default), but MVC/security
+  and concurrency coverage remain incomplete.
 
 ## 2. Current Baseline
 
@@ -63,28 +67,37 @@ The most urgent facts are:
 
 ### Verified build and test state
 
-The following checks were run with Java 25 against the authorized test PostgreSQL
-instance:
+The following checks were run on 2026-09-29 with Java 25 and the Maven Wrapper, with no
+network access to the configured application database and no Jasypt secret present:
 
 ```text
-mvn -B -ntp clean verify
-Result: BUILD SUCCESS — 336 tests passed, 1 opt-in test skipped
+./mvnw -B -ntp clean verify
+Result: BUILD SUCCESS — 345 tests passed, 1 opt-in test skipped
 ```
 
-The last full build was verified on 2026-09-25 with the SDKMAN-managed Temurin JDK
-25.0.4 and Maven 3.9.16. The server's system Java 25 installation is no longer a
-build blocker; Maven enforces the Java 25 range at validate time.
+The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
+3.9.16. The server's system Java 25 installation is no longer a build blocker; Maven
+enforces the Java 25 range at validate time.
 
-Flyway validated and applied V1–V8, Hibernate initialized against PostgreSQL 18.6, and
-the application context started successfully. A test-skipping package build also
-succeeds. The passing suite includes the full Spring context test, Mockito unit tests,
-accessor/record tests, direct controller/exception-handler invocations, and focused
-security/validation tests.
+Flyway validated and applied V1–V8 against an embedded PostgreSQL 14.15 instance that
+is created empty on every build, Hibernate validated the migrated schema, and the
+application context started successfully. The passing suite includes the full Spring
+context test, Mockito unit tests, accessor/record tests, direct
+controller/exception-handler invocations, and focused security/validation tests.
 
-The default context test still inherits the configured external datasource and can
-mutate that database; bootstrap seeding is disabled by default, while the opt-in `test`
-profile accepts a disposable datasource. A hermetic Testcontainers/default workflow
-remains open.
+Test isolation is now the default rather than an opt-in:
+
+- `com.maintainsoft.testsupport.TestInfrastructureExtension` is auto-detected through
+  `junit.jupiter.extensions.autodetection.enabled` and publishes the datasource and
+  the throwaway key pair as system properties before any application context is built.
+- No test can silently fall back to the configured application datasource, and the
+  suite needs neither Docker nor the Jasypt master password.
+- Setting `TEST_DATABASE_URL` skips the embedded instance and runs against the
+  database named by the `test` profile, which is how the migration chain is checked
+  against the PostgreSQL version used in deployment.
+- Because the embedded database starts empty, every build is also a clean-database
+  migration test; `CleanDatabaseMigrationTest` asserts the applied chain, the domain
+  tables, the seeded machine statuses, and the domain check constraints.
 
 Additional tooling findings:
 
@@ -296,24 +309,29 @@ question below explicitly says otherwise.
 
 #### P0.1 Rotate and externalize secrets
 
-**Finding:** `private.key` and `public.key` are tracked under
-`src/main/resources/private.key` and `src/main/resources/public.key`. The packaged JAR
-contains both files. Historical commits also contain the Jasypt master password
-alongside encrypted database credentials, so those credentials must be treated as
-compromised even though the active properties file no longer contains the master
-password.
+**Finding:** the packaged JAR no longer contains key material. Signing keys are read at
+runtime from `app.security.rsa.private-key` / `app.security.rsa.public-key`, which accept
+any Spring resource location, default to `file:./config/*.key`, and are git-ignored.
+`RsaKeyPackagingTest` fails the build if key files reappear on the classpath or if
+loading stops failing loudly when a key is absent. The test suite uses a throwaway key
+pair generated per JVM, so no test depends on a developer's real keys.
+
+What this does **not** fix: the key pair committed earlier is still in Git history, and
+historical commits also contain the Jasypt master password alongside encrypted database
+credentials. Those credentials must still be treated as compromised.
 
 **Tasks:**
 
+- [x] Move signing material outside the repository and outside the application JAR;
+      load it through a configurable resource location.
+- [x] Remove key files from Git tracking and add appropriate `.gitignore` rules.
+- [x] Add a regression test that fails if key material is packaged again.
+- [x] Provide `scripts/generate-jwt-keys.sh` for local key generation.
 - [ ] Generate a new RSA key pair and invalidate all tokens signed by the old key.
-- [ ] Move signing material outside the repository and outside the application JAR;
-      load it through an environment/secret-manager mechanism.
 - [ ] Rotate the database credential and any historical Jasypt material, and
       externalize the complete environment-specific datasource configuration.
 - [ ] Review access logs and persisted data for tokens or credentials issued before
       rotation; investigate any suspected misuse.
-- [ ] Remove key files and local secret files from Git tracking and add appropriate
-      `.gitignore` rules.
 - [ ] Coordinate history cleanup with the owner; deleting current files alone does not
       remove historical exposure.
 - [ ] Document key rotation and emergency invalidation procedures.
@@ -420,24 +438,24 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 
 #### P1.5 Isolate the test environment
 
-**Finding:** the default full context test still passes against the authorized test
-database and V1–V8 are verified there, so it can still mutate that database. Bootstrap
-seeding is disabled by default; an opt-in `test` profile accepts `TEST_DATABASE_URL`,
-`TEST_DATABASE_USERNAME`, and `TEST_DATABASE_PASSWORD`, and runs the same
-migration/context check against a caller-provided disposable database. A hermetic
-default/Testcontainers workflow is still required.
+**Finding:** the suite is hermetic. `mvn verify` starts an embedded PostgreSQL instance
+on a loopback port and migrates it from empty, so it needs neither Docker, nor the
+configured application database, nor the Jasypt master password. Docker is unavailable
+on the current host, so an embedded server process was chosen over Testcontainers. The
+opt-in `test` profile remains as the escape hatch for checking the migration chain
+against the PostgreSQL version used in deployment.
 
 - [x] Add an opt-in test profile and test-only datasource configuration.
-- [ ] Use Testcontainers PostgreSQL or a deliberately disposable local database.
+- [x] Use a deliberately disposable database (embedded PostgreSQL 14.15, started per
+      test JVM and created empty).
 - [x] Disable the bootstrap initializer in the opt-in integration profile.
+- [x] Add clean-database migration tests in addition to the successful V1→V8 run.
+- [x] Make `mvn verify` safe by default.
 - [ ] Inventory each deployment database's `flyway_schema_history` before choosing
       between preserving V1, baselining, or creating V2+; do not blindly run `repair`
       to hide checksum or schema mismatches.
 - [ ] Align the runtime and Maven-plugin Flyway versions, or remove the unused Maven
       plugin and document the supported migration workflow.
-- [ ] Add clean-database migration tests in addition to the successful V1→V8 test-DB
-      run.
-- [ ] Make `mvn verify` safe by default.
 
 **Acceptance:** a clean checkout can run the complete test suite without network access
 to the configured application database, and migration behavior is reproducible for a
@@ -445,17 +463,20 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 336-test inventory still overstates behavioral coverage. Add:
+The current 345-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
 - [x] Real RSA encode/decode tests covering tampering, expiry, issuer, and token purpose.
 - [x] Add repository integration coverage for soft deletion, archive filtering, and audit fields.
-- [ ] Add repository coverage for optimistic locking and uniqueness races.
+- [x] Add repository coverage for optimistic locking and database uniqueness
+      (`RepositoryConstraintIntegrationTest`).
 - [x] Add rollback-only PostgreSQL workflow coverage for repair, stock, and cost transactions.
-- [ ] Add clean-database Flyway migration coverage independent of the configured test database.
-- Tests for `DataIntegrityViolationException`, malformed JSON, null values, and
-  optimistic-lock failures.
+- [x] Add clean-database Flyway migration coverage independent of the configured
+      application database.
+- [ ] Tests for malformed JSON and null values at the HTTP boundary.
+- [ ] True multi-threaded concurrency coverage; the current optimistic-lock test is
+      deterministic rather than a parallel race.
 
 ### P1 — API and domain correctness
 
@@ -552,11 +573,12 @@ status/machine/spare/repair/auth foundation, Machine CRUD,
 Spare CRUD, current-balance inventory, repair creation, assignment, lifecycle updates,
 INR costs, repair-driven machine status defaults, representative HTTP security
 coverage with JSON 401/403 errors, rollback-only PostgreSQL workflow coverage,
-spare purchase-date audit coverage, repository archive/audit coverage, and an opt-in
-disposable-database profile are implemented. V1–V8 pass against the authorized
-test database; the opt-in profile is skipped without its three environment variables,
-and hermetic Testcontainers coverage, secret rotation, and the complete role/security
-matrix remain open.
+spare purchase-date audit coverage, repository archive/audit coverage, and
+optimistic-lock/uniqueness constraint coverage are implemented. The suite is hermetic:
+V1–V8 are applied to an embedded PostgreSQL instance created empty on every build, with
+`CleanDatabaseMigrationTest` asserting the result. Key material is no longer packaged;
+the opt-in externally supplied database test is skipped unless `TEST_DATABASE_URL` is
+set, and secret rotation and the complete role/security matrix remain open.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
@@ -604,32 +626,33 @@ A change is not complete merely because a unit test passes. The minimum gate for
 vertical slice is:
 
 - [x] Clean compile with the selected Java 25 LTS baseline.
-- [ ] Relevant unit tests.
+- [x] Relevant unit tests.
 - [ ] MVC/security tests for the public contract.
-- [ ] PostgreSQL integration coverage for persistence and migrations.
+- [x] PostgreSQL integration coverage for persistence and migrations.
 - [ ] Validation and error-response tests.
 - [ ] Authorization tests for every protected operation.
 - [ ] Transaction/concurrency tests where writes can race.
-- [ ] No secrets in source, fixtures, reports, logs, or packaged artifacts.
-- [ ] `git diff --check` and a clean, intentional worktree diff.
+- [x] No signing key in the packaged artifact, guarded by `RsaKeyPackagingTest`.
+- [ ] No remaining credentials in source, fixtures, reports, or logs; the Jasypt
+      master password and database credential rotation are still open.
+- [x] `git diff --check` and a clean, intentional worktree diff.
 
-The canonical command has now passed against the authorized test database:
+The canonical command is now safe on an arbitrary checkout:
 
 ```bash
-mvn -B -ntp clean verify
+./mvnw -B -ntp clean verify
 ```
 
-It is still not safe on an arbitrary checkout until P1.5 provides an isolated test
-datasource. Without that isolation, the full command may mutate the configured
-application database; the explicit exclusion is a **database-contact avoidance**
-workaround only:
+It starts an embedded PostgreSQL instance and migrates it from empty, so it never
+touches the configured application database and needs no secret. The earlier
+database-contact avoidance workaround is no longer required:
 
 ```bash
 mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
 ```
 
-That workaround still copies the tracked key resources into the packaged artifact until
-P0.1 is closed; do not distribute the resulting JAR.
+The artifact no longer embeds signing keys, but the encrypted datasource credential
+and the historical exposure in Git still block distribution until P0.1 is closed.
 
 ## 8. Non-Goals and Guardrails
 
@@ -649,7 +672,9 @@ P0.1 is closed; do not distribute the resulting JAR.
 
 ## 9. Open Decisions for the Project Owner
 
-1. Where should RSA keys and database/Jasypt secrets be stored in deployment?
+1. Which secret backend should back `app.security.rsa.*` and the datasource in
+   deployment (mounted files, Vault, cloud secret manager)? The application now
+   accepts any Spring resource location, so this is a deployment decision.
 2. Which frontend/client stack and CORS origins will be used after the API milestone?
 3. Should refresh tokens use a database table, Redis, or another session store?
 4. Is rate limiting intended only for auth/breakdown endpoints or for the broader API?
