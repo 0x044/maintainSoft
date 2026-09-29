@@ -9,7 +9,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -367,6 +369,92 @@ class GlobalExceptionHandlerTest {
             ResourceNotFoundException ex = new ResourceNotFoundException(null);
 
             assertThat(ex.getMessage()).isNull();
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Regression coverage for handler gaps
+    // ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("handleAuthentication")
+    class HandleAuthenticationTests {
+
+        @Test
+        @DisplayName("a deleted user refreshing a still-valid token is 401, not 500")
+        void usernameNotFoundIsUnauthorized() {
+            UsernameNotFoundException ex = new UsernameNotFoundException("User not found: gone@example.com");
+
+            ResponseEntity<ErrorResponse> response = handler.handleAuthentication(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody())
+                    .isNotNull()
+                    .satisfies(body -> {
+                        assertThat(body.status()).isEqualTo(401);
+                        // The response must not reveal that the account exists or not.
+                        assertThat(body.message()).isEqualTo("Invalid username or password");
+                    });
+        }
+
+        @Test
+        @DisplayName("UsernameNotFoundException is an AuthenticationException")
+        void usernameNotFoundIsAnAuthenticationException() {
+            assertThat(new UsernameNotFoundException("x"))
+                    .isInstanceOf(org.springframework.security.core.AuthenticationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("handleUnreadableBody")
+    class HandleUnreadableBodyTests {
+
+        @Test
+        @DisplayName("malformed JSON is 400 and does not echo parser detail")
+        void malformedJsonIsBadRequest() {
+            HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+                    "Unexpected end-of-input in VALUE_STRING", new EmptyHttpInputMessage());
+
+            ResponseEntity<ErrorResponse> response = handler.handleUnreadableBody(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody())
+                    .isNotNull()
+                    .satisfies(body -> {
+                        assertThat(body.status()).isEqualTo(400);
+                        assertThat(body.message()).doesNotContain("VALUE_STRING");
+                    });
+        }
+    }
+
+    @Nested
+    @DisplayName("handleMethodNotSupported")
+    class HandleMethodNotSupportedTests {
+
+        @Test
+        @DisplayName("unsupported method is 405")
+        void unsupportedMethodIsNotAllowed() {
+            ResponseEntity<ErrorResponse> response = handler.handleMethodNotSupported(
+                    new org.springframework.web.HttpRequestMethodNotSupportedException("TRACE"));
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+            assertThat(response.getBody())
+                    .isNotNull()
+                    .satisfies(body -> assertThat(body.status()).isEqualTo(405));
+        }
+    }
+
+    private static final class EmptyHttpInputMessage
+            implements org.springframework.http.HttpInputMessage {
+
+        @Override
+        public java.io.InputStream getBody() {
+            return java.io.InputStream.nullInputStream();
+        }
+
+        @Override
+        public org.springframework.http.HttpHeaders getHeaders() {
+            return new org.springframework.http.HttpHeaders();
         }
     }
 }

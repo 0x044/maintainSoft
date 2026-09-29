@@ -14,4 +14,14 @@ public record CreateUserRequest(
         @NotBlank @Size(max = 32) String phone,
         @NotNull UUID department
 ) {
+    /**
+     * Records generate a {@code toString()} that includes every component, which would
+     * write the password to any log, error report, or debugger that prints this
+     * request. Only the identifying field is safe to expose.
+     */
+    @Override
+    public String toString() {
+        return "CreateUserRequest[name=" + name + ", email=" + email
+                + ", password=<redacted>, phone=" + phone + ", department=" + department + "]";
+    }
 }
