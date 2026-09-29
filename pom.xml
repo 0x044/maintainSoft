@@ -104,7 +104,39 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
+		<!--
+			Hermetic test database. The embedded server runs as a local process on a
+			loopback port, so the default test suite needs neither Docker nor access to
+			the configured application database. io.zonky.test:embedded-postgres pulls
+			the binaries for the common desktop/CI architectures; the profile below
+			adds the Linux arm64 build.
+		-->
+		<dependency>
+			<groupId>io.zonky.test</groupId>
+			<artifactId>embedded-postgres</artifactId>
+			<version>2.1.0</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
+	<profiles>
+		<profile>
+			<id>embedded-postgres-linux-arm64</id>
+			<activation>
+				<os>
+					<family>unix</family>
+					<arch>aarch64</arch>
+				</os>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>io.zonky.test.postgres</groupId>
+					<artifactId>embedded-postgres-binaries-linux-arm64v8</artifactId>
+					<version>14.15.0</version>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
 	<build>
 		<plugins>
 			<plugin>
