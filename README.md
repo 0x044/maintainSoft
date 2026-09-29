@@ -133,6 +133,22 @@ Run one class with:
 ./mvnw -B -ntp test -Dtest=RepositoryConstraintIntegrationTest
 ```
 
+## Adding an endpoint
+
+The security configuration in `SecurityConfig` **denies by default**. A new route is
+refused until someone deliberately maps it, so an endpoint cannot silently become
+available to every authenticated caller.
+
+1. Map it in `SecurityConfig` under the correct role rule. `GET /api/v1/**` is already
+   open to any authenticated user; every mutating method needs an explicit rule.
+2. Add the case to `RoleMatrixHttpTest`, which asserts the whole matrix and fails if
+   an expected status changes.
+3. Add the route to the tables above if it is part of the public API.
+
+This policy exists because two bypasses shipped unnoticed: `/api/v1/departments` was
+never mapped at all, and `POST /api/v1/repairs` fell through to
+`anyRequest().authenticated()`.
+
 ## Security status
 
 Read `ROADMAP.md` before deploying anything. In particular, the RSA key pair and the

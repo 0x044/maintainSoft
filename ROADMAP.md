@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `1ada915`, verified 2026-09-29.
+> **Source baseline:** commit `2bb54ef`, verified 2026-09-29.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -29,15 +29,18 @@ The most urgent facts are:
   are still in Git history and must still be treated as compromised and rotated.
 - The bootstrap manager uses hard-coded, publicly known credentials.
 - Public registration is removed; manager-only supervisor invitations now exist.
-- URL-level role rules cover the initial user/status/machine/repair routes, and
-  representative HTTP 401/403 coverage is green, but method authorization and the
-  complete role matrix remain untested.
+- The filter chain now denies by default and the full role matrix is asserted in
+  `RoleMatrixHttpTest` (51 cases across every method/role/path combination).
+- Two authorization bypasses were found and fixed by that matrix: `/api/v1/departments`
+  was absent from the security configuration entirely, and `POST /api/v1/repairs` fell
+  through to `anyRequest().authenticated()`. Either let any authenticated caller create,
+  rename, and archive departments, or open a new repair.
 - Access and refresh token purposes are separated; hashed refresh-token rotation,
   family replay revocation, logout, and scheduled cleanup are implemented.
 - The test suite is hermetic: it starts an embedded PostgreSQL instance and a
   throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
   configured application database, nor the Jasypt master password.
-- The current source compiles on Java 25 and 359 tests pass (one opt-in test that
+- The current source compiles on Java 25 and 410 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
 
@@ -73,7 +76,7 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 359 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 410 tests passed, 1 opt-in test skipped
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
@@ -464,7 +467,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 359-test inventory still overstates behavioral coverage. Add:
+The current 410-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -641,7 +644,8 @@ vertical slice is:
 - [ ] MVC/security tests for the public contract.
 - [x] PostgreSQL integration coverage for persistence and migrations.
 - [ ] Validation and error-response tests.
-- [ ] Authorization tests for every protected operation.
+- [x] Authorization tests for every protected operation (`RoleMatrixHttpTest`), plus a
+      guard that an unmapped route is refused rather than silently served.
 - [ ] Transaction/concurrency tests where writes can race.
 - [x] No signing key in the packaged artifact, guarded by `RsaKeyPackagingTest`.
 - [ ] No remaining credentials in source, fixtures, reports, or logs; the Jasypt
