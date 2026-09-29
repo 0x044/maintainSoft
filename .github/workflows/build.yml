@@ -1,0 +1,47 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Java 25 / Maven wrapper
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      # Pins the Maven version through the committed wrapper rather than the runner image.
+      - name: Resolve Maven
+        run: ./mvnw -B -ntp --version
+
+      # The suite starts its own embedded PostgreSQL, so no database service or
+      # secret is required here. That is the property this job exists to prove.
+      - name: Verify
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Confirm no signing key is packaged
+        run: |
+          if unzip -l target/*.jar | grep -qiE '\.key$'; then
+            echo "::error::key material is packaged in the build artifact"
+            exit 1
+          fi
+          echo "No key material in the packaged artifact."
