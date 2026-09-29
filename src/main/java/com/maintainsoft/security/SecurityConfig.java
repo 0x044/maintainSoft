@@ -65,10 +65,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger/**", "/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/users", "/api/v1/machine-statuses").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/machines/**", "/api/v1/spares/**")
-                        .authenticated()
+
+                        // Read access is available to any authenticated user.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/**").authenticated()
+
+                        // Writes are restricted by role. Every mutating route must be
+                        // listed here: the catch-all below denies by default, so a new
+                        // endpoint cannot silently inherit authenticated access.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users", "/api/v1/machine-statuses")
+                        .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/machines", "/api/v1/spares",
                                 "/api/v1/spares/*/stock/*")
                         .hasAnyRole("MANAGER", "SUPERVISOR")
@@ -76,14 +81,24 @@ public class SecurityConfig {
                         .hasAnyRole("MANAGER", "SUPERVISOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/machines/*", "/api/v1/spares/*")
                         .hasAnyRole("MANAGER", "SUPERVISOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/repairs", "/api/v1/repairs/*/updates",
+                                "/api/v1/repairs/*/costs")
+                        .hasAnyRole("MANAGER", "SUPERVISOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/repairs/*/claim").hasRole("SUPERVISOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/repairs/*").hasAnyRole("MANAGER", "SUPERVISOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/repairs/*/assignment").hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/repairs/*")
-                        .hasAnyRole("MANAGER", "SUPERVISOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/repairs/*/updates", "/api/v1/repairs/*/costs")
-                        .hasAnyRole("MANAGER", "SUPERVISOR")
-                        .requestMatchers("/api/v1/repairs/**").authenticated()
-                        .anyRequest().authenticated()
+
+                        // Department master data is manager-owned.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/departments").hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/departments/*").hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/departments/*").hasRole("MANAGER")
+
+                        .requestMatchers("/api/v1/auth/logout").authenticated()
+
+                        // Deny by default: an unmapped API route is refused rather than
+                        // silently inheriting authenticated access.
+                        .requestMatchers("/api/v1/**").denyAll()
+                        .anyRequest().denyAll()
                 ).csrf(CsrfConfigurer::disable)
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt((jwt) -> jwt
                         .decoder(accessJwtDecoder())

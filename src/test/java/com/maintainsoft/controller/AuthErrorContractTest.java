@@ -101,12 +101,13 @@ class AuthErrorContractTest {
 
     @Test
     void unsupportedMethodIsNotAllowedRatherThanAServerError() throws Exception {
-        // The security filter chain runs before method dispatch, so the caller must be
-        // authenticated for the request to reach the handler under test.
-        mockMvc.perform(put("/api/v1/auth/login")
+        // Logout is the one route the filter chain admits for an authenticated caller
+        // of any HTTP method, so the request reaches method dispatch and produces a
+        // 405 rather than being refused by authorization first.
+        mockMvc.perform(put("/api/v1/auth/logout")
                         .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_MANAGER")))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content("{\"refreshToken\":\"a.b.c\"}"))
                 .andExpect(status().isMethodNotAllowed());
     }
 
