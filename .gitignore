@@ -32,3 +32,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### MaintainSoft ###
+# The JWT signing key pair is generated locally by scripts/generate-jwt-keys.sh and
+# must never be committed or packaged.
+config/
