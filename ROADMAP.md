@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `4fc7be4`, verified 2026-09-29.
+> **Source baseline:** commit `1ada915`, verified 2026-09-29.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -37,7 +37,7 @@ The most urgent facts are:
 - The test suite is hermetic: it starts an embedded PostgreSQL instance and a
   throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
   configured application database, nor the Jasypt master password.
-- The current source compiles on Java 25 and 345 tests pass (one opt-in test that
+- The current source compiles on Java 25 and 359 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
 
@@ -73,7 +73,7 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 345 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 359 tests passed, 1 opt-in test skipped
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
@@ -464,7 +464,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 345-test inventory still overstates behavioral coverage. Add:
+The current 359-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -475,7 +475,9 @@ The current 345-test inventory still overstates behavioral coverage. Add:
 - [x] Add rollback-only PostgreSQL workflow coverage for repair, stock, and cost transactions.
 - [x] Add clean-database Flyway migration coverage independent of the configured
       application database.
-- [ ] Tests for malformed JSON and null values at the HTTP boundary.
+- [x] Tests for malformed JSON, empty bodies, validation failures, and unsupported
+      methods at the HTTP boundary (`AuthErrorContractTest`).
+- [ ] Tests for null values reaching the persistence layer.
 - [ ] True multi-threaded concurrency coverage; the current optimistic-lock test is
       deterministic rather than a parallel race.
 
@@ -486,8 +488,11 @@ The current 345-test inventory still overstates behavioral coverage. Add:
       stable 400 response.
 - [x] Map persistence conflicts and optimistic-lock failures to non-leaking 409 responses.
 - [x] Return stable JSON 401/403 responses from Spring Security.
-- [ ] Replace the remaining catch-all 500 behavior and log unexpected server errors with
-      context.
+- [x] Log unexpected server errors with context while keeping the response body generic,
+      and stop the catch-all from swallowing client-error exceptions.
+- [x] Map `AuthenticationException` to 401. A refresh token outlives its account, so a
+      deleted user previously surfaced as a 500; see `AuthErrorContractTest` and
+      `DeletedUserAuthenticationContractTest`.
 - [ ] Decide whether to use `ProblemDetail` or retain the current `ErrorResponse`
       contract consistently.
 - [x] Redesign Department routes to use plural resources and path IDs.
@@ -495,8 +500,8 @@ The current 345-test inventory still overstates behavioral coverage. Add:
       race to HTTP 409.
 - [x] Allow Department rename through an explicit PATCH contract.
 - [x] Return proper 404/409/204 semantics for Department operations.
-- [ ] Remove secret-bearing DTO `toString()` output or prevent request/response DTOs
-      from being logged.
+- [x] Redact `password` from the generated `toString()` of `LoginRequest` and
+      `CreateUserRequest`, which would otherwise leak it into any log.
 
 ### P1 — Data-model corrections
 
