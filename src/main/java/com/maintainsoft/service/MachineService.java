@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +54,8 @@ public class MachineService {
     }
 
     @Transactional
-    public MachineResponse createMachine(CreateMachineRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public MachineResponse createMachine(CreateMachineRequest request) {
         validateLifecycle(request.commissionedAt(), request.decommissionedAt());
         validateMaintenanceInterval(request.maintenanceIntervalDays());
         Department department = departmentRepository.findById(request.departmentId())
@@ -79,7 +81,8 @@ public class MachineService {
     }
 
     @Transactional
-    public MachineResponse updateMachine(UUID id, UpdateMachineRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public MachineResponse updateMachine(UUID id, UpdateMachineRequest request) {
         Machine machine = machineRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Machine not found: " + id));
         validateLifecycle(
@@ -115,7 +118,8 @@ public class MachineService {
     }
 
     @Transactional
-    public void archiveMachine(UUID id) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public void archiveMachine(UUID id) {
         Machine machine = machineRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Machine not found: " + id));
         machine.setDeleted(true);

@@ -25,6 +25,7 @@ import com.maintainsoft.repository.RepairSpareRepository;
 import com.maintainsoft.repository.SpareRepository;
 import com.maintainsoft.service.RepairService;
 import com.maintainsoft.service.SpareService;
+import com.maintainsoft.testsupport.TestSecurityContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -109,11 +110,16 @@ class RepairWorkflowIntegrationTest {
                 authentication("ROLE_REPORTER")
         );
 
-        SpareResponse afterIssue = spareService.issueStock(
-                spare.getId(),
-                new StockIssueRequest(2, created.id())
-        );
-        assertThat(afterIssue.stock()).isEqualTo(1);
+        // Stock operations are authorized from the security context rather than an
+        // argument, and issuing stock is a manager/supervisor operation. The caller has
+        // to be presented the way a request would.
+        SpareResponse[] afterIssue = new SpareResponse[1];
+        TestSecurityContext.runAs(authentication("ROLE_MANAGER"), () -> afterIssue[0] =
+                spareService.issueStock(
+                        spare.getId(),
+                        new StockIssueRequest(2, created.id())
+                ));
+        assertThat(afterIssue[0].stock()).isEqualTo(1);
 
         var update = repairService.addRepairUpdate(
                 created.id(),

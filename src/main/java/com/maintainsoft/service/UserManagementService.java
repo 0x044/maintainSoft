@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class UserManagementService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
+    @PreAuthorize("hasRole('MANAGER')")
     public UserResponse createSupervisor(CreateUserRequest request) {
         if (userRepository.findByEmail(request.email()).isPresent()) {
             throw new DuplicateEmailException("Email already registered: " + request.email());

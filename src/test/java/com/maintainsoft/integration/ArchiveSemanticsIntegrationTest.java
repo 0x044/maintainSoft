@@ -6,6 +6,7 @@ import com.maintainsoft.repository.DepartmentRepository;
 import com.maintainsoft.repository.SpareRepository;
 import com.maintainsoft.service.DepartmentService;
 import com.maintainsoft.service.SpareService;
+import com.maintainsoft.testsupport.TestSecurityContext;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
@@ -45,10 +46,13 @@ class ArchiveSemanticsIntegrationTest {
         departmentRepository.saveAndFlush(department);
         UUID id = department.getId();
 
-        departmentService.deleteDepartment(id);
+        TestSecurityContext.runAs(TestSecurityContext.asManager(),
+                () -> departmentService.deleteDepartment(id));
 
         assertThat(department.isDeleted()).isTrue();
         assertThat(department.getUpdatedAt()).isNotNull();
+        // The auditor resolves the caller when the transaction flushes, which happens
+        // after the temporary context is restored, so it still falls back to "system".
         assertThat(department.getUpdatedBy()).isEqualTo("system");
         entityManager.flush();
         entityManager.clear();
@@ -64,7 +68,8 @@ class ArchiveSemanticsIntegrationTest {
         spareRepository.saveAndFlush(spare);
         UUID id = spare.getId();
 
-        spareService.archiveSpare(id);
+        TestSecurityContext.runAs(TestSecurityContext.asSupervisor(),
+                () -> spareService.archiveSpare(id));
 
         assertThat(spare.isDeleted()).isTrue();
         entityManager.flush();

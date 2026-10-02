@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +48,8 @@ public class SpareService {
     }
 
     @Transactional
-    public SpareResponse createSpare(CreateSpareRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public SpareResponse createSpare(CreateSpareRequest request) {
         validateStock(request.initialStock());
         Spare spare = new Spare();
         spare.setPartNumber(request.partNumber());
@@ -65,7 +67,8 @@ public class SpareService {
     }
 
     @Transactional
-    public SpareResponse updateSpare(UUID id, UpdateSpareRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public SpareResponse updateSpare(UUID id, UpdateSpareRequest request) {
         Spare spare = spareRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Spare not found: " + id));
         if (request.partNumber() != null) {
@@ -92,7 +95,8 @@ public class SpareService {
     }
 
     @Transactional
-    public void archiveSpare(UUID id) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public void archiveSpare(UUID id) {
         Spare spare = spareRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Spare not found: " + id));
         spare.setDeleted(true);
@@ -100,7 +104,8 @@ public class SpareService {
     }
 
     @Transactional
-    public SpareResponse receiveStock(UUID id, StockQuantityRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public SpareResponse receiveStock(UUID id, StockQuantityRequest request) {
         validatePositiveQuantity(request.quantity());
         Spare spare = getLockedSpare(id);
         spare.setStock(addWithoutOverflow(spare.getStock(), request.quantity()));
@@ -108,7 +113,8 @@ public class SpareService {
     }
 
     @Transactional
-    public SpareResponse returnStock(UUID id, StockReturnRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public SpareResponse returnStock(UUID id, StockReturnRequest request) {
         validatePositiveQuantity(request.quantity());
         Spare spare = getLockedSpare(id);
         getRepair(request.repairId());
@@ -125,7 +131,8 @@ public class SpareService {
     }
 
     @Transactional
-    public SpareResponse adjustStock(UUID id, StockAdjustmentRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public SpareResponse adjustStock(UUID id, StockAdjustmentRequest request) {
         if (request.quantity() < 0) {
             throw new InvalidSpareException("Stock quantity cannot be negative");
         }
@@ -135,7 +142,8 @@ public class SpareService {
     }
 
     @Transactional
-    public SpareResponse issueStock(UUID id, StockIssueRequest request) {
+    @PreAuthorize("hasAnyRole('MANAGER', 'SUPERVISOR')")
+public SpareResponse issueStock(UUID id, StockIssueRequest request) {
         validatePositiveQuantity(request.quantity());
         Spare spare = getLockedSpare(id);
         if (spare.getStock() < request.quantity()) {

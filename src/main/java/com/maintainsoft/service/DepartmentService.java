@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ public class DepartmentService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('MANAGER')")
     public DepartmentResponse createDepartment(DepartmentRequest request) {
         Department department = new Department();
         apply(department, request);
@@ -39,6 +41,7 @@ public class DepartmentService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('MANAGER')")
     public DepartmentResponse updateDepartment(UUID id, DepartmentRequest request) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found: " + id));
@@ -52,6 +55,7 @@ public class DepartmentService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('MANAGER')")
     public void deleteDepartment(UUID id) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found: " + id));

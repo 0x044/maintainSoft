@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class MachineStatusService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('MANAGER')")
     public MachineStatusResponse createCustomStatus(CreateMachineStatusRequest request) {
         MachineStatus status = new MachineStatus();
         status.setName(request.name());
