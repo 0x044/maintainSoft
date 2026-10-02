@@ -135,15 +135,18 @@ Run one class with:
 
 ## Adding an endpoint
 
-The security configuration in `SecurityConfig` **denies by default**. A new route is
-refused until someone deliberately maps it, so an endpoint cannot silently become
-available to every authenticated caller.
+Authorization is enforced **twice**, and both layers must allow the operation.
 
-1. Map it in `SecurityConfig` under the correct role rule. `GET /api/v1/**` is already
-   open to any authenticated user; every mutating method needs an explicit rule.
-2. Add the case to `RoleMatrixHttpTest`, which asserts the whole matrix and fails if
-   an expected status changes.
-3. Add the route to the tables above if it is part of the public API.
+1. **Route rules.** `SecurityConfig` denies by default: a new route is refused until
+   someone deliberately maps it, so an endpoint cannot silently become available to
+   every authenticated caller. `GET /api/v1/**` is already open to any authenticated
+   user; every mutating method needs an explicit rule.
+2. **Service rules.** Mutating service methods carry `@PreAuthorize`, so the rule
+   travels with the operation. A new controller, scheduled task, or internal call
+   cannot bypass the route rules. Manager-only operations use `hasRole('MANAGER')`;
+   shared ones use `hasAnyRole('MANAGER', 'SUPERVISOR')`.
+3. **Tests.** Add the case to `RoleMatrixHttpTest` (the HTTP contract) and to
+   `MethodSecurityTest` (the service contract). Both fail if an expected status changes.
 
 This policy exists because two bypasses shipped unnoticed: `/api/v1/departments` was
 never mapped at all, and `POST /api/v1/repairs` fell through to

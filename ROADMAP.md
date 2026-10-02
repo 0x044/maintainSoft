@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `2bb54ef`, verified 2026-09-29.
+> **Source baseline:** commit `b5bbf57`, verified 2026-10-02.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -29,8 +29,10 @@ The most urgent facts are:
   are still in Git history and must still be treated as compromised and rotated.
 - The bootstrap manager uses hard-coded, publicly known credentials.
 - Public registration is removed; manager-only supervisor invitations now exist.
-- The filter chain now denies by default and the full role matrix is asserted in
+- The filter chain denies by default and the full role matrix is asserted in
   `RoleMatrixHttpTest` (51 cases across every method/role/path combination).
+- Roles are enforced twice: by the URL rules and again by `@PreAuthorize` on the
+  service layer, so a new controller or internal call cannot bypass them.
 - Two authorization bypasses were found and fixed by that matrix: `/api/v1/departments`
   was absent from the security configuration entirely, and `POST /api/v1/repairs` fell
   through to `anyRequest().authenticated()`. Either let any authenticated caller create,
@@ -40,7 +42,7 @@ The most urgent facts are:
 - The test suite is hermetic: it starts an embedded PostgreSQL instance and a
   throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
   configured application database, nor the Jasypt master password.
-- The current source compiles on Java 25 and 410 tests pass (one opt-in test that
+- The current source compiles on Java 25 and 416 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
 
@@ -54,7 +56,7 @@ The most urgent facts are:
 - Spring MVC, Spring Data JPA/Hibernate, PostgreSQL
 - Spring Security OAuth2 resource server with hand-issued RSA JWTs
 - Flyway, Jasypt, Actuator, Springdoc, Lombok
-- Resilience4j rate-limiter dependency is present but unused
+
 
 ### Repository shape
 
@@ -76,7 +78,7 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 410 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 416 tests passed, 1 opt-in test skipped
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
@@ -399,12 +401,16 @@ not enabled, and the complete role matrix is not yet covered by HTTP tests.
 
 - [x] Implement the initial confirmed role matrix for the user route: managers and
       supervisors share business operations; manager-only actions cover user management.
-- [ ] Enable method security after checking the current AOP auto-configuration exclusion.
+- [x] Enable method security. The AOP auto-configuration exclusion was incidental (added
+      in an unrelated Flyway commit) and was the only thing preventing `@PreAuthorize`
+      from working; removing it let the service layer enforce roles too.
+- [x] Add `@PreAuthorize` to the department, machine, spare, machine-status, and user
+      services so a rule travels with the operation rather than only with the route.
 - [x] Add a custom JWT authority converter so `ROLE_MANAGER` and `ROLE_SUPERVISOR`
       claims map to Spring role authorities.
 - [x] Add MockMvc/security tests for 401, 403, and representative
       manager/supervisor/reporter boundaries across user, status, stock, and repair routes.
-- [ ] Complete the role matrix coverage for every protected operation.
+- [x] Complete the role matrix coverage for every protected operation.
 
 #### P1.2 Separate access and refresh token validation
 
@@ -430,8 +436,9 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 
 #### P1.4 Add abuse controls and safe diagnostics
 
-- [ ] Add login/refresh and breakdown-report throttling; the current Resilience4j
-      dependency is unused and is not Spring-integrated.
+- [ ] Add login/refresh and breakdown-report throttling. The unused Resilience4j
+      dependency was removed, so this needs a deliberate mechanism (Spring's
+      `RequestRateLimiter`, Bucket4j, or a filter) plus a decision on scope.
 - [x] Restrict Actuator `startup`/`conditions` and Swagger/OpenAPI in the `prod` profile.
 - [x] Fix CORS methods and allowed headers for the current API; exact approved origins
       remain unchanged.
@@ -458,8 +465,9 @@ against the PostgreSQL version used in deployment.
 - [ ] Inventory each deployment database's `flyway_schema_history` before choosing
       between preserving V1, baselining, or creating V2+; do not blindly run `repair`
       to hide checksum or schema mismatches.
-- [ ] Align the runtime and Maven-plugin Flyway versions, or remove the unused Maven
-      plugin and document the supported migration workflow.
+- [x] Remove the unused Flyway Maven plugin (12.0.0, no executions, no datasource
+      configuration, and a version mismatch against the runtime 11.14.1). Flyway runs
+      through Spring Boot on startup; the CLI workflow is documented in the README.
 
 **Acceptance:** a clean checkout can run the complete test suite without network access
 to the configured application database, and migration behavior is reproducible for a
@@ -467,7 +475,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 410-test inventory still overstates behavioral coverage. Add:
+The current 416-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -619,7 +627,8 @@ set, and secret rotation and the complete role/security matrix remain open.
 ### Milestone 5 — Release hardening
 
 - [x] Restrict diagnostics and documentation endpoints by profile/environment.
-- [ ] Decide whether Resilience4j is required and implement it properly or remove it.
+- [x] Remove the unused Resilience4j dependency: nothing referenced it, so it was
+      shipping as unused supply-chain surface.
 - [x] Enforce the selected Java 25 baseline with Maven Enforcer.
 - [x] Add a Maven Wrapper pinned to Maven 3.9.16.
 - [x] Pin the selected JDK in CI through the `build` workflow (Temurin 25 + wrapper).
