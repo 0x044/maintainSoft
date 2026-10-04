@@ -41,13 +41,14 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties(RsaKeyProperties.class)
+@EnableConfigurationProperties({RsaKeyProperties.class, RateLimitProperties.class})
 public class SecurityConfig {
 
     private final RsaKeyPair rsaKeyPair;
@@ -59,6 +60,23 @@ public class SecurityConfig {
     @Bean
     static RsaKeyPair rsaKeyPair(ResourceLoader resourceLoader, RsaKeyProperties properties) {
         return RsaKeyPairLoader.load(resourceLoader, properties);
+    }
+
+    /**
+     * Throttles the anonymous auth endpoints before the controller runs.
+     */
+    @Bean
+    AuthRateLimitFilter authRateLimitFilter(RateLimitProperties properties) {
+        RateLimitProperties.Auth auth = properties.auth() == null
+                ? new RateLimitProperties.Auth(10, 60, 30, 60, true)
+                : properties.auth();
+
+        return AuthRateLimitFilter.create(
+                auth.loginPermits(),
+                Duration.ofSeconds(auth.loginPeriodSeconds()),
+                auth.refreshPermits(),
+                Duration.ofSeconds(auth.refreshPeriodSeconds())
+        );
     }
 
     @Bean

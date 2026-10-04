@@ -90,6 +90,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
+		<!--
+			Throttling for the unauthenticated auth endpoints. The core rate-limiter is
+			used directly rather than the Spring Boot starter so the limits are defined in
+			one place (AuthRateLimitFilter) instead of being split between annotations and
+			auto-configured properties.
+		-->
+		<dependency>
+			<groupId>io.github.resilience4j</groupId>
+			<artifactId>resilience4j-ratelimiter</artifactId>
+			<version>2.4.0</version>
+		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
