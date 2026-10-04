@@ -97,6 +97,18 @@ export APP_BOOTSTRAP_MANAGER_PASSWORD='...'
 | `app.security.rsa.private-key` | `file:./config/private.key` | PEM PKCS#8 signing key |
 | `app.security.rsa.public-key` | `file:./config/public.key` | PEM X.509 verification key |
 | `app.bootstrap.enabled` | `false` | First-manager seeding |
+| `app.rate-limit.auth.login-permits` | `10` | Login attempts per client per period |
+| `app.rate-limit.auth.login-period-seconds` | `60` | Login window length |
+| `app.rate-limit.auth.refresh-permits` | `30` | Refresh attempts per client per period |
+| `app.rate-limit.auth.refresh-period-seconds` | `60` | Refresh window length |
+
+Login and refresh are throttled per client address and return `429` with the standard
+error body once the budget is spent. The limit is applied before the controller, so a
+rejected attempt performs no password hashing and writes nothing.
+
+> Behind a reverse proxy, **strip `X-Forwarded-For` at the edge**. The limiter trusts
+> that header to identify the caller, so a forged value would let an attacker rotate
+> addresses and bypass the limit.
 
 Both key properties accept any Spring resource location, so a deployment can use a
 mounted secret instead of a file on disk:

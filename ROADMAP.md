@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `b5bbf57`, verified 2026-10-02.
+> **Source baseline:** commit `abe095f`, verified 2026-10-04.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -42,7 +42,7 @@ The most urgent facts are:
 - The test suite is hermetic: it starts an embedded PostgreSQL instance and a
   throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
   configured application database, nor the Jasypt master password.
-- The current source compiles on Java 25 and 416 tests pass (one opt-in test that
+- The current source compiles on Java 25 and 421 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
 
@@ -78,7 +78,7 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 416 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 421 tests passed, 1 opt-in test skipped
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
@@ -436,9 +436,14 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 
 #### P1.4 Add abuse controls and safe diagnostics
 
-- [ ] Add login/refresh and breakdown-report throttling. The unused Resilience4j
-      dependency was removed, so this needs a deliberate mechanism (Spring's
-      `RequestRateLimiter`, Bucket4j, or a filter) plus a decision on scope.
+- [x] Add login and refresh throttling with Resilience4j, keyed per client address and
+      applied before the controller so a rejected attempt does no password hashing and
+      writes nothing. Limits are configured through `app.rate-limit.auth.*`.
+- [ ] Decide whether throttling should extend beyond the auth endpoints. Roadmap open
+      decision 4 is still unanswered, and breakdown reporting is the likely next
+      candidate.
+- Deployments behind a reverse proxy must strip `X-Forwarded-For` at the edge, otherwise
+      a caller can rotate a forged address to bypass the per-client limit.
 - [x] Restrict Actuator `startup`/`conditions` and Swagger/OpenAPI in the `prod` profile.
 - [x] Fix CORS methods and allowed headers for the current API; exact approved origins
       remain unchanged.
@@ -475,7 +480,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 416-test inventory still overstates behavioral coverage. Add:
+The current 421-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -627,8 +632,9 @@ set, and secret rotation and the complete role/security matrix remain open.
 ### Milestone 5 — Release hardening
 
 - [x] Restrict diagnostics and documentation endpoints by profile/environment.
-- [x] Remove the unused Resilience4j dependency: nothing referenced it, so it was
-      shipping as unused supply-chain surface.
+- [x] Restore Resilience4j and use it for auth throttling. It was briefly removed as
+      dead weight, which was wrong: rate limiting was still a requirement, and deleting
+      the only mechanism for it was not a call worth making silently.
 - [x] Enforce the selected Java 25 baseline with Maven Enforcer.
 - [x] Add a Maven Wrapper pinned to Maven 3.9.16.
 - [x] Pin the selected JDK in CI through the `build` workflow (Temurin 25 + wrapper).
@@ -701,7 +707,8 @@ and the historical exposure in Git still block distribution until P0.1 is closed
    accepts any Spring resource location, so this is a deployment decision.
 2. Which frontend/client stack and CORS origins will be used after the API milestone?
 3. Should refresh tokens use a database table, Redis, or another session store?
-4. Is rate limiting intended only for auth/breakdown endpoints or for the broader API?
+4. Should throttling extend beyond login/refresh to breakdown reporting and the rest
+   of the API? Login and refresh are already throttled per client address.
 5. What recurrence/lead-time rules apply to scheduled repairs?
 6. When is a repair considered complete when stock or cost information is incomplete?
 7. Where is the missing `DESIGN.md`, if it still exists?
