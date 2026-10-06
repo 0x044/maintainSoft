@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `7b22612`, verified 2026-10-06.
+> **Source baseline:** commit `e1da24b`, verified 2026-10-06.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -42,7 +42,7 @@ The most urgent facts are:
 - The test suite is hermetic: it starts an embedded PostgreSQL instance and a
   throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
   configured application database, nor the Jasypt master password.
-- The current source compiles on Java 25 and 433 tests pass (one opt-in test that
+- The current source compiles on Java 25 and 432 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
 
@@ -78,7 +78,7 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 433 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 432 tests passed, 1 opt-in test skipped
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
@@ -455,7 +455,9 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 - [x] Fix CORS methods and allowed headers for the current API; exact approved origins
       remain unchanged.
 - [x] Return stable JSON 401/403 responses from the security filter chain.
-- [ ] Review diagnostics/logging to ensure credentials and tokens are not emitted.
+- [x] Review diagnostics and logging: no log statement emits a token, password, or
+      secret; both password-bearing request DTOs redact their `toString()`; the `prod`
+      profile limits Actuator to `health,info` and disables Swagger.
 
 ### P1 — Build, test, and migration safety
 
@@ -487,7 +489,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 433-test inventory still overstates behavioral coverage. Add:
+The current 432-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -500,7 +502,12 @@ The current 433-test inventory still overstates behavioral coverage. Add:
       application database.
 - [x] Tests for malformed JSON, empty bodies, validation failures, and unsupported
       methods at the HTTP boundary (`AuthErrorContractTest`).
-- [ ] Tests for null values reaching the persistence layer.
+- [x] Cover optional fields reaching the persistence layer
+      (`OptionalFieldNullabilityTest`): every optional machine, repair, and spare field
+      may be omitted, and required repair fields are refused by the service rather than
+      leaking a persistence-layer exception.
+- [x] Delete the unused `RegisterRequest` DTO left over from the removed public
+      registration feature; it carried an unredacted password field.
 - [x] Replace the deterministic optimistic-lock test with real parallel contention for
       the highest-risk write path (stock). Other entities still use the deterministic
       check.
@@ -517,8 +524,9 @@ The current 433-test inventory still overstates behavioral coverage. Add:
 - [x] Map `AuthenticationException` to 401. A refresh token outlives its account, so a
       deleted user previously surfaced as a 500; see `AuthErrorContractTest` and
       `DeletedUserAuthenticationContractTest`.
-- [ ] Decide whether to use `ProblemDetail` or retain the current `ErrorResponse`
-      contract consistently.
+- [x] Retain the `ErrorResponse` contract. It is already uniform across the exception
+      handler, the security filter chain, and the rate limiter, and the alternative would
+      change every error path the client depends on for no functional gain.
 - [x] Redesign Department routes to use plural resources and path IDs.
 - [x] Make Department creation concurrency-safe by translating the database uniqueness
       race to HTTP 409.
