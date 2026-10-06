@@ -1,6 +1,6 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `abe095f`, verified 2026-10-04.
+> **Source baseline:** commit `7b22612`, verified 2026-10-06.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
@@ -42,7 +42,7 @@ The most urgent facts are:
 - The test suite is hermetic: it starts an embedded PostgreSQL instance and a
   throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
   configured application database, nor the Jasypt master password.
-- The current source compiles on Java 25 and 421 tests pass (one opt-in test that
+- The current source compiles on Java 25 and 433 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
 
@@ -78,7 +78,7 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 421 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 433 tests passed, 1 opt-in test skipped
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
@@ -432,7 +432,14 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 - [x] Reject replay of a consumed token and revoke token families when reuse is
       detected.
 - [x] Add `POST /api/v1/auth/logout` and scheduled expiry cleanup for refresh-token rows.
-- [ ] Decide how user deactivation invalidates existing access tokens.
+- [x] Add `DELETE /api/v1/users/{id}` and `GET /api/v1/users`. Deactivation archives the
+      user and revokes every live refresh token, so the account cannot extend the session
+      it holds. A manager cannot deactivate themselves, and cannot deactivate the last
+      remaining manager.
+- [x] Decide the residual risk: an access token already issued is stateless and stays
+      usable until it expires (15 minutes). Deactivation is therefore not instantaneous
+      for a token already in flight. Shortening the access-token lifetime is the only
+      remaining lever if that window is unacceptable.
 
 #### P1.4 Add abuse controls and safe diagnostics
 
@@ -480,7 +487,7 @@ new and an existing database.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
-The current 421-test inventory still overstates behavioral coverage. Add:
+The current 433-test inventory still overstates behavioral coverage. Add:
 
 - `MockMvc`/`WebTestClient` tests for routing, JSON binding, validation, status codes,
   CORS, and the security filter chain.
@@ -494,8 +501,9 @@ The current 421-test inventory still overstates behavioral coverage. Add:
 - [x] Tests for malformed JSON, empty bodies, validation failures, and unsupported
       methods at the HTTP boundary (`AuthErrorContractTest`).
 - [ ] Tests for null values reaching the persistence layer.
-- [ ] True multi-threaded concurrency coverage; the current optimistic-lock test is
-      deterministic rather than a parallel race.
+- [x] Replace the deterministic optimistic-lock test with real parallel contention for
+      the highest-risk write path (stock). Other entities still use the deterministic
+      check.
 
 ### P1 — API and domain correctness
 
@@ -661,7 +669,9 @@ vertical slice is:
 - [ ] Validation and error-response tests.
 - [x] Authorization tests for every protected operation (`RoleMatrixHttpTest`), plus a
       guard that an unmapped route is refused rather than silently served.
-- [ ] Transaction/concurrency tests where writes can race.
+- [x] True multi-threaded concurrency coverage for stock (`StockConcurrencyTest`):
+      concurrent issues cannot oversell and concurrent receipts are not lost. Verified by
+      removing the row lock, which makes them fail.
 - [x] No signing key in the packaged artifact, guarded by `RsaKeyPackagingTest`.
 - [ ] No remaining credentials in source, fixtures, reports, or logs; the Jasypt
       master password and database credential rotation are still open.
