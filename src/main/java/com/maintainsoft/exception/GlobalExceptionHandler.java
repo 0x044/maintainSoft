@@ -28,6 +28,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now()));
     }
 
+    @ExceptionHandler(InvalidUserException.class)
+    ResponseEntity<ErrorResponse> handleInvalidUser(InvalidUserException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponse(409, "Conflict", e.getMessage(), Instant.now()));
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException e) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(401, "Unauthorized", "Invalid username or password", Instant.now()));

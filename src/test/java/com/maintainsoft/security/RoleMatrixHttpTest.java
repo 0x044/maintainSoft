@@ -94,6 +94,8 @@ class RoleMatrixHttpTest {
         // or other users.
         "POST,   /api/v1/machine-statuses,                SUPERVISOR, 403",
         "POST,   /api/v1/users,                           SUPERVISOR, 403",
+        "GET,    /api/v1/users,                           SUPERVISOR, 403",
+        "DELETE, /api/v1/users/{id},                      SUPERVISOR, 403",
         "POST,   /api/v1/departments,                     SUPERVISOR, 403",
         "PATCH,  /api/v1/departments/{id},                SUPERVISOR, 403",
         "DELETE, /api/v1/departments/{id},                SUPERVISOR, 403",
@@ -111,6 +113,8 @@ class RoleMatrixHttpTest {
     @CsvSource({
         "POST,   /api/v1/machine-statuses,                MANAGER,   201",
         "POST,   /api/v1/users,                           MANAGER,   201",
+        "GET,    /api/v1/users,                           MANAGER,   200",
+        "DELETE, /api/v1/users/{id},                      MANAGER,   204",
         "POST,   /api/v1/departments,                     MANAGER,   201",
         "POST,   /api/v1/repairs,                         MANAGER,   201",
         "POST,   /api/v1/repairs/{id}/claim,              MANAGER,   403",

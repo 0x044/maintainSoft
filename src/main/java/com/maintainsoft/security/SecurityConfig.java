@@ -86,6 +86,11 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger/**", "/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
 
+                        // The user directory exposes emails and phone numbers, so it stays manager-only
+                        // even though other read routes are open to any authenticated user.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users").hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/*").hasRole("MANAGER")
+
                         // Read access is available to any authenticated user.
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").authenticated()
 

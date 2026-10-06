@@ -86,6 +86,23 @@ public class RefreshTokenService {
         }
     }
 
+    /**
+     * Revokes every live refresh token belonging to a user.
+     *
+     * <p>Called when an account is deactivated so the person cannot extend the session
+     * they already hold. Access tokens are stateless and remain valid until they expire,
+     * so deactivation is not instantaneous for a token already in flight.
+     */
+    @Transactional
+    public int revokeAllForUser(UUID userId) {
+        List<RefreshToken> live = refreshTokenRepository
+                .findByUser_IdAndRevokedAtIsNull(userId);
+        Instant now = Instant.now();
+        live.forEach(token -> token.setRevokedAt(now));
+        refreshTokenRepository.saveAll(live);
+        return live.size();
+    }
+
     private RefreshToken newToken(User user, String rawToken, Jwt jwt, UUID familyId) {
         String tokenJti = jti(jwt);
         Instant expiresAt = jwt.getExpiresAt();

@@ -38,6 +38,20 @@ public final class TestSecurityContext {
     }
 
     /**
+     * A manager whose principal is the given email.
+     *
+     * <p>In a real request the principal is the token subject, which is the account's
+     * email, and the service compares it to decide who is deactivating whom.
+     */
+    public static Authentication asManager(String email) {
+        return new UsernamePasswordAuthenticationToken(
+                email,
+                "ignored",
+                java.util.List.of(new SimpleGrantedAuthority("ROLE_MANAGER"))
+        );
+    }
+
+    /**
      * Runs the supplied action with the given authentication installed, and restores the
      * previous context afterwards so one test cannot affect the next.
  */
