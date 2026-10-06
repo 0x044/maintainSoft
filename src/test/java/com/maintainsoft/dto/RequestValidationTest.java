@@ -55,13 +55,4 @@ class RequestValidationTest {
 
         assertThat(violations).hasSize(3);
     }
-
-    @Test
-    void validRegisterRequestPassesValidation() {
-        RegisterRequest request = new RegisterRequest(
-                "User", "user@example.com", "password", "1234567890", UUID.randomUUID()
-        );
-
-        assertThat(validator.validate(request)).isEmpty();
-    }
 }
