@@ -357,8 +357,20 @@ public class RepairService {
     }
 
     private void validateCreateRequest(CreateRepairRequest request) {
+        // Every field is checked here rather than relying on bean validation alone, so an
+        // internal caller cannot push a null down into the repository and get a
+        // persistence-layer failure instead of a domain error.
+        if (request.machineId() == null) {
+            throw new InvalidRepairException("machineId is required");
+        }
         if (request.repairType() == null) {
             throw new InvalidRepairException("repairType is required");
+        }
+        if (request.description() == null || request.description().isBlank()) {
+            throw new InvalidRepairException("description is required");
+        }
+        if (request.idempotencyKey() == null || request.idempotencyKey().isBlank()) {
+            throw new InvalidRepairException("idempotencyKey is required");
         }
     }
 
