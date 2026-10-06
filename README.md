@@ -6,7 +6,7 @@ spare-parts inventory, and a repair lifecycle. Spring Boot 4 on Java 25 with Pos
 ## Prerequisites
 
 - JDK 25 (the build fails fast on any other version)
-- No database, no Docker, and no secrets are needed to run the tests
+- The PostgreSQL instance the application uses. No Docker is involved
 
 Use the committed Maven Wrapper so the Maven version is pinned:
 
@@ -20,17 +20,17 @@ Use the committed Maven Wrapper so the Maven version is pinned:
 ./mvnw -B -ntp clean verify
 ```
 
-The suite starts an embedded PostgreSQL instance on a loopback port, migrates it from
-empty, and rolls back each test's writes. It never contacts the application database.
+The suite connects to the same PostgreSQL instance as the application, named in
+`spring.datasource.url`. Most tests roll back their writes, so they leave nothing
+behind; the concurrency and deactivation tests commit and clean up after themselves.
 
-To check the migration chain against the PostgreSQL version used in deployment, point
-the suite at a disposable database instead:
+To run against a different database, override the three datasource properties:
 
 ```bash
-TEST_DATABASE_URL=jdbc:postgresql://localhost:5432/maintainsoft_test \
-TEST_DATABASE_USERNAME=... \
-TEST_DATABASE_PASSWORD=... \
-./mvnw -B -ntp clean verify
+./mvnw -B -ntp clean verify \
+  -Dspring.datasource.url=jdbc:postgresql://localhost:5432/maintainsoft_test \
+  -Dspring.datasource.username=... \
+  -Dspring.datasource.password=...
 ```
 
 ## Running the application
@@ -126,9 +126,11 @@ Flyway applies `src/main/resources/db/migration` on startup; JPA runs with
 `ddl-auto=validate` so the schema is only ever changed by a migration. Never edit an
 already-applied migration — add a new one.
 
-Before pointing this at an existing database, inspect that database's
-`flyway_schema_history` and decide deliberately between preserving V1, baselining, or
-creating new migrations. Do not run `repair` to silence a checksum mismatch.
+Flyway validates the checksum of every applied migration against the file on disk at
+startup, so editing a migration that has already run will stop the application from
+booting. If that happens, decide deliberately between reverting the file, baselining, or
+adding a new migration — do not run `repair` to silence the mismatch. `MigrationStateTest`
+reports the applied chain and flags any baselined rows.
 
 ## Tests
 
@@ -137,7 +139,7 @@ creating new migrations. Do not run `repair` to silence a checksum mismatch.
 | `src/test/java/com/maintainsoft/integration` | Rollback-only PostgreSQL coverage: repair, stock, costs, archive, audit, constraints, migrations |
 | `src/test/java/com/maintainsoft/security` | HTTP authorization, CORS, JWT decoding, key-packaging guard |
 | `src/test/java/com/maintainsoft/service` | Mockito unit tests |
-| `src/test/java/com/maintainsoft/testsupport` | Embedded database and throwaway key pair used by the whole suite |
+| `src/test/java/com/maintainsoft/testsupport` | Throwaway key pair and security-context helpers |
 
 Run one class with:
 

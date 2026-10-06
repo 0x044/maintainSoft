@@ -11,15 +11,16 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Proves that the migration chain builds the whole schema from nothing.
+ * Verifies the migration state of the database the application actually uses.
  *
- * <p>The test suite runs against an embedded database that is created empty for every
- * build, so this is genuine clean-database evidence rather than a re-run against a
- * long-lived environment. {@code ddl-auto=validate} is also active, which means the
- * JPA entities are checked against the migrated schema during context startup.
+ * <p>The suite runs against the configured PostgreSQL instance, which already carries the
+ * schema. This is therefore a drift guard rather than a clean-database test: Flyway
+ * validates every applied migration's checksum against the file on disk during startup,
+ * so a rewritten migration would already have failed the context load. What this adds is
+ * an explicit, readable statement of what has been applied.
  */
 @SpringBootTest
-class CleanDatabaseMigrationTest {
+class MigrationStateTest {
 
     private static final List<String> EXPECTED_TABLES = List.of(
             "departments",
@@ -41,12 +42,26 @@ class CleanDatabaseMigrationTest {
     @Test
     void everyMigrationIsAppliedSuccessfully() {
         List<Map<String, Object>> applied = jdbcTemplate.queryForList(
-                "select version, description, success from flyway_schema_history order by installed_rank");
+                "select version, description, checksum, success from flyway_schema_history "
+                        + "order by installed_rank");
 
         assertThat(applied).isNotEmpty();
         assertThat(applied).allSatisfy(row -> assertThat(row.get("success")).isEqualTo(true));
         assertThat(applied).extracting(row -> row.get("version").toString())
                 .containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
+    }
+
+    /**
+     * Every applied migration must have a checksum on record. A null checksum means the
+     * row was baselined rather than migrated, which hides whether the file on disk ever
+     * actually ran against this database.
+     */
+    @Test
+    void everyAppliedMigrationHasAChecksumOnRecord() {
+        List<Map<String, Object>> missingChecksum = jdbcTemplate.queryForList(
+                "select version from flyway_schema_history where checksum is null");
+
+        assertThat(missingChecksum).isEmpty();
     }
 
     @Test

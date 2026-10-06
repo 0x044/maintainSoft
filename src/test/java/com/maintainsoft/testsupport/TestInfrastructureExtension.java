@@ -13,28 +13,20 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 /**
- * Supplies the test suite with disposable infrastructure instead of developer-local
- * state: an embedded PostgreSQL database and a throwaway JWT signing key pair.
+ * Supplies the test suite with a throwaway JWT signing key pair.
  *
- * <p>Both are published through system properties, which take precedence over
- * {@code application.properties} in Spring's property resolution order. That means an
- * individual test needs no datasource hook, and no test can silently fall back to the
- * configured application database or the developer's signing keys.
+ * <p>The key pair is generated once per test JVM and published through system
+ * properties, which take precedence over {@code application.properties}. That keeps the
+ * suite independent of the developer's signing keys while still using the real
+ * datasource from configuration.
+ *
+ * <p>The database is deliberately <em>not</em> replaced here: the suite runs against the
+ * same PostgreSQL instance the application uses.
  */
 public class TestInfrastructureExtension implements BeforeAllCallback {
 
-    /**
-     * When this variable is set, the suite runs against the database named by the
-     * {@code test} profile instead of the embedded instance. This is the escape hatch
-     * for checking migrations against the PostgreSQL version used in deployment.
-     */
-    private static final String EXTERNAL_DATABASE_URL = "TEST_DATABASE_URL";
-
     @Override
     public void beforeAll(ExtensionContext context) {
-        if (System.getenv(EXTERNAL_DATABASE_URL) == null) {
-            EmbeddedDatabase.start().registerAsSystemProperties();
-        }
         EphemeralRsaKeys.registerAsSystemProperties();
     }
 
