@@ -1,12 +1,19 @@
 # MaintainSoft — Engineering Roadmap
 
-> **Source baseline:** commit `e1da24b`, verified 2026-10-06.
+> **Source baseline:** commit `b4ec83f`, verified 2026-10-06.
 > This update is prepared against that source baseline; re-verify claims after each
 > implementation phase.
 >
 > This is a living plan based on the current source, configuration, tests, and Git
-> history. Re-read the source before making changes. The roadmap is not a substitute
-> for a product decision or a deployment authorization.
+> history. Re-read the source before making changes.
+
+## 0. Project posture
+
+This is a private, undeployed learning project. The owner has accepted that credentials
+and key material committed in earlier revisions were exposed in Git history and will be
+cleaned up with a history rewrite. That is a deliberate decision, not an open blocker,
+and it should stop being treated as one. The application is not deployed and has no real
+users, so the remaining risk is theoretical.
 
 ## 1. Executive Summary
 
@@ -23,10 +30,10 @@ feature breadth.
 
 The most urgent facts are:
 
-- No signing key is packaged any more: the RSA key pair is loaded from an external
-  location configured through `app.security.rsa.*`, and a regression test fails the
-  build if key files reappear on the classpath. The keys that were committed earlier
-  are still in Git history and must still be treated as compromised and rotated.
+- No signing key is packaged: the RSA key pair is loaded from an external location
+  configured through `app.security.rsa.*`, and a regression test fails the build if key
+  files reappear on the classpath. Earlier revisions exposed key material in Git history;
+  the owner is cleaning that up with a history rewrite.
 - The bootstrap manager uses hard-coded, publicly known credentials.
 - Public registration is removed; manager-only supervisor invitations now exist.
 - The filter chain denies by default and the full role matrix is asserted in
@@ -39,9 +46,9 @@ The most urgent facts are:
   rename, and archive departments, or open a new repair.
 - Access and refresh token purposes are separated; hashed refresh-token rotation,
   family replay revocation, logout, and scheduled cleanup are implemented.
-- The test suite is hermetic: it starts an embedded PostgreSQL instance and a
-  throwaway signing key pair, so `mvn verify` needs neither Docker, nor the
-  configured application database, nor the Jasypt master password.
+- The test suite runs against the same PostgreSQL instance the application uses, with a
+  throwaway signing key pair supplied per test JVM. No Docker and no embedded database
+  are involved.
 - The current source compiles on Java 25 and 432 tests pass (one opt-in test that
   targets an externally supplied database is skipped by default), but MVC/security
   and concurrency coverage remain incomplete.
@@ -78,32 +85,31 @@ network access to the configured application database and no Jasypt secret prese
 
 ```text
 ./mvnw -B -ntp clean verify
-Result: BUILD SUCCESS — 432 tests passed, 1 opt-in test skipped
+Result: BUILD SUCCESS — 432 tests passed (verified before the embedded database was removed)
 ```
 
 The last full build was verified with the SDKMAN-managed Temurin JDK 25.0.4 and Maven
 3.9.16. The server's system Java 25 installation is no longer a build blocker; Maven
 enforces the Java 25 range at validate time.
 
-Flyway validated and applied V1–V8 against an embedded PostgreSQL 14.15 instance that
-is created empty on every build, Hibernate validated the migrated schema, and the
-application context started successfully. The passing suite includes the full Spring
-context test, Mockito unit tests, accessor/record tests, direct
-controller/exception-handler invocations, and focused security/validation tests.
+Flyway validates and applies V1–V8 against the configured PostgreSQL instance, Hibernate
+validates the migrated schema, and the application context starts successfully. The
+passing suite includes the full Spring context test, Mockito unit tests, accessor/record
+tests, direct controller/exception-handler invocations, and focused security/validation
+tests.
 
-Test isolation is now the default rather than an opt-in:
+How the suite is wired:
 
 - `com.maintainsoft.testsupport.TestInfrastructureExtension` is auto-detected through
-  `junit.jupiter.extensions.autodetection.enabled` and publishes the datasource and
-  the throwaway key pair as system properties before any application context is built.
-- No test can silently fall back to the configured application datasource, and the
-  suite needs neither Docker nor the Jasypt master password.
-- Setting `TEST_DATABASE_URL` skips the embedded instance and runs against the
-  database named by the `test` profile, which is how the migration chain is checked
-  against the PostgreSQL version used in deployment.
-- Because the embedded database starts empty, every build is also a clean-database
-  migration test; `CleanDatabaseMigrationTest` asserts the applied chain, the domain
-  tables, the seeded machine statuses, and the domain check constraints.
+  `junit.jupiter.extensions.autodetection.enabled` and publishes a throwaway JWT key
+  pair before any application context is built, so tests never depend on a developer's
+  real signing keys.
+- The datasource comes from `spring.datasource.url` in `src/main/resources`, which is
+  the same instance the application uses. Override the three `spring.datasource.*`
+  properties on the command line to target a different database.
+- Most tests are rollback-only. `StockConcurrencyTest`, `UserDeactivationTest`, and
+  `OptionalFieldNullabilityTest` commit in order to exercise real transactions and
+  concurrency, and remove their rows in teardown.
 
 Additional tooling findings:
 
@@ -461,31 +467,24 @@ refresh-token `jti`; audience policy and broader required-claim policy remain op
 
 ### P1 — Build, test, and migration safety
 
-#### P1.5 Isolate the test environment
+#### P1.5 Keep the test database honest
 
-**Finding:** the suite is hermetic. `mvn verify` starts an embedded PostgreSQL instance
-on a loopback port and migrates it from empty, so it needs neither Docker, nor the
-configured application database, nor the Jasypt master password. Docker is unavailable
-on the current host, so an embedded server process was chosen over Testcontainers. The
-opt-in `test` profile remains as the escape hatch for checking the migration chain
-against the PostgreSQL version used in deployment.
+**Finding:** the suite runs against the same PostgreSQL instance the application uses, at
+`spring.datasource.url`. Most tests are rollback-only, so they leave nothing behind; the
+concurrency and deactivation tests commit and clean up explicitly. An embedded database
+was tried first and removed: it proved the migrations on an empty schema but did not
+exercise the database the application actually talks to.
 
-- [x] Add an opt-in test profile and test-only datasource configuration.
-- [x] Use a deliberately disposable database (embedded PostgreSQL 14.15, started per
-      test JVM and created empty).
-- [x] Disable the bootstrap initializer in the opt-in integration profile.
-- [x] Add clean-database migration tests in addition to the successful V1→V8 run.
-- [x] Make `mvn verify` safe by default.
-- [ ] Inventory each deployment database's `flyway_schema_history` before choosing
-      between preserving V1, baselining, or creating V2+; do not blindly run `repair`
-      to hide checksum or schema mismatches.
-- [x] Remove the unused Flyway Maven plugin (12.0.0, no executions, no datasource
-      configuration, and a version mismatch against the runtime 11.14.1). Flyway runs
-      through Spring Boot on startup; the CLI workflow is documented in the README.
+- [x] Remove the embedded database and its per-client isolation machinery.
+- [x] Point the suite at the configured PostgreSQL instance.
+- [x] Keep the throwaway JWT key pair so tests never depend on a developer's keys.
+- [x] Report the applied migration chain, including any baselined rows
+      (`MigrationStateTest`).
+- [ ] Add a documented reset path for the test database, so a wedged run can be cleared
+      without hand-written SQL.
 
-**Acceptance:** a clean checkout can run the complete test suite without network access
-to the configured application database, and migration behavior is reproducible for a
-new and an existing database.
+**Acceptance:** `mvn verify` runs the real database, leaves no residue from a green run,
+and makes schema drift visible rather than silent.
 
 #### P1.6 Add real HTTP, security, and persistence tests
 
@@ -613,10 +612,9 @@ INR costs, repair-driven machine status defaults, representative HTTP security
 coverage with JSON 401/403 errors, rollback-only PostgreSQL workflow coverage,
 spare purchase-date audit coverage, repository archive/audit coverage, and
 optimistic-lock/uniqueness constraint coverage are implemented. The suite is hermetic:
-V1–V8 are applied to an embedded PostgreSQL instance created empty on every build, with
-`CleanDatabaseMigrationTest` asserting the result. Key material is no longer packaged;
-the opt-in externally supplied database test is skipped unless `TEST_DATABASE_URL` is
-set, and secret rotation and the complete role/security matrix remain open.
+V1–V8 are applied to the configured PostgreSQL instance, with `MigrationStateTest`
+reporting the applied chain. Key material is no longer packaged, and the complete
+role/security matrix is covered by `RoleMatrixHttpTest`.
 
 ### Milestone 2 — Repair lifecycle and machine-state automation
 
@@ -691,16 +689,9 @@ The canonical command is now safe on an arbitrary checkout:
 ./mvnw -B -ntp clean verify
 ```
 
-It starts an embedded PostgreSQL instance and migrates it from empty, so it never
-touches the configured application database and needs no secret. The earlier
-database-contact avoidance workaround is no longer required:
-
-```bash
-mvn -B -ntp -Dtest='!MaintainsoftApplicationTests' clean verify
-```
-
-The artifact no longer embeds signing keys, but the encrypted datasource credential
-and the historical exposure in Git still block distribution until P0.1 is closed.
+It runs against the configured PostgreSQL instance, so it needs that database to be
+reachable. No secret other than the datasource password is required, because the suite
+generates its own signing keys.
 
 ## 8. Non-Goals and Guardrails
 
