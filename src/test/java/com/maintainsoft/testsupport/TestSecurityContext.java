@@ -5,6 +5,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.function.Supplier;
+
 /**
  * Helpers for populating the security context in tests.
  *
@@ -38,7 +40,7 @@ public final class TestSecurityContext {
     /**
      * Runs the supplied action with the given authentication installed, and restores the
      * previous context afterwards so one test cannot affect the next.
-     */
+ */
     public static void runAs(Authentication authentication, Runnable action) {
         Authentication previous = SecurityContextHolder.getContext().getAuthentication();
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -47,5 +49,22 @@ public final class TestSecurityContext {
         } finally {
             SecurityContextHolder.getContext().setAuthentication(previous);
         }
+    }
+
+    /**
+     * Value-returning variant of {@link #runAs(Authentication, Runnable)}.
+     */
+    public static <T> T runAs(Authentication authentication, Supplier<T> action) {
+        Authentication previous = SecurityContextHolder.getContext().getAuthentication();
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        try {
+            return action.get();
+        } finally {
+            SecurityContextHolder.getContext().setAuthentication(previous);
+        }
+    }
+
+    public static <T> T runAsManager(Supplier<T> action) {
+        return runAs(asManager(), action);
     }
 }
